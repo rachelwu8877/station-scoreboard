@@ -77,12 +77,15 @@
 
   * { box-sizing: border-box; }
 
+  html, body { overflow-x: hidden; }
+
   body {
     background: var(--bg);
     color: var(--text);
     font-family: "Manrope", -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
     padding: 28px 20px 64px;
     min-height: 100vh;
+    max-width: 100vw;
   }
 
   .wrap { max-width: 1080px; margin: 0 auto; }
@@ -479,10 +482,10 @@
     .rank-badge { width: 24px; height: 24px; font-size: 11px; }
     .rank-name { font-size: 13.5px; white-space: nowrap; }
     .game-rank-chips {
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+      justify-content: flex-end;
       gap: 4px;
       margin-left: auto;
-      overflow-x: auto;
     }
     .game-rank-chip { padding: 3px 6px; font-size: 11px; }
 
@@ -526,7 +529,6 @@
 
 </head>
 <body>
-
 <div class="wrap">
   <header class="page">
     <h1>闖關計分板</h1>
