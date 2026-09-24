@@ -434,17 +434,30 @@
     a.offDays.forEach(function (d) { if (b.offDays.indexOf(d) === -1) ops.push({ type: 'off', date: d, on: false }); });
     return ops;
   }
+  // 畫面已經先改好了，儲存在背景進行；只有等太久才提示
+  var slowTimer = null, doneTimer = null;
   function apiSave() {
     dirty = true;
-    setStatus('儲存中…');
+    clearTimeout(doneTimer);
+    if (!slowTimer) slowTimer = setTimeout(function () { setStatus('還在儲存，請稍等…'); }, 4000);
     clearTimeout(apiTimer);
     apiTimer = setTimeout(apiFlush, 400);
   }
+  function apiSaved() {
+    clearTimeout(slowTimer); slowTimer = null;
+    setStatus('✓ 已儲存');
+    clearTimeout(doneTimer);
+    doneTimer = setTimeout(function () { setStatus(''); }, 2000);
+  }
+  // 還沒存完就要離開時提醒
+  window.addEventListener('beforeunload', function (e) {
+    if (mode === 'api' && (dirty || inflight)) { e.preventDefault(); e.returnValue = ''; }
+  });
   function apiFlush() {
     if (inflight || !server) return;
     var ops = diffOps(server, state);
     dirty = false;
-    if (!ops.length) { setStatus(''); return; }
+    if (!ops.length) { apiSaved(); return; }
     inflight = true;
     // text/plain 才不會被瀏覽器擋（Apps Script 不支援預檢請求）
     fetch(API_URL, { method: 'POST', body: JSON.stringify({ ops: ops }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
@@ -455,10 +468,11 @@
         server = normalize(res.state);
         if (dirty) { apiFlush(); return; }
         state = normalize(server); render();
-        setStatus('已儲存');
+        apiSaved();
       })
       .catch(function () {
         inflight = false; dirty = true;
+        clearTimeout(slowTimer); slowTimer = null;
         setStatus('儲存失敗，稍後自動再試…');
         clearTimeout(apiTimer);
         apiTimer = setTimeout(apiFlush, 5000);
