@@ -111,6 +111,28 @@
     padding: 20px; width: min(360px, calc(100vw - 32px));
   }
   dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+
+  /* 行事曆 */
+  .icon-btn {
+    width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--accent); display: grid; place-items: center; padding: 0;
+  }
+  .icon-btn svg { width: 22px; height: 22px; }
+  #calDialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+  .month { margin-top: 16px; }
+  .month h3 { font-size: 14px; margin: 0 0 6px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal .wd { font-size: 11px; color: var(--muted); text-align: center; padding: 2px 0; }
+  .day {
+    border: 1px solid transparent; border-radius: 8px; background: none; color: var(--text);
+    min-height: 44px; padding: 3px 0; display: flex; flex-direction: column; align-items: center;
+    font-size: 12px; font-variant-numeric: tabular-nums;
+  }
+  .day.play { background: var(--ok-bg); }
+  .day.today { border-color: var(--border); }
+  .day.selected { border-color: var(--accent); }
+  .day .n { font-weight: 700; color: var(--accent); font-size: 13px; }
+  .day .l { font-size: 10px; color: var(--leave); }
   dialog h2 { margin-bottom: 12px; }
   dialog label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
   dialog select, dialog input { width: 100%; }
@@ -129,8 +151,19 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🏸 羽球點名板</h1>
-  <p class="muted" style="margin:0">誰請假、誰出席、還能約誰，一頁看完。</p>
+  <div class="row between" style="flex-wrap:nowrap">
+    <div>
+      <h1>🏸 羽球點名板</h1>
+      <p class="muted" style="margin:0">誰請假、誰出席、還能約誰，一頁看完。</p>
+    </div>
+    <button class="icon-btn" id="calBtn" aria-label="開啟本季行事曆" title="本季行事曆">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>
+        <circle cx="8" cy="14" r="0.6" fill="currentColor"/><circle cx="12" cy="14" r="0.6" fill="currentColor"/><circle cx="16" cy="14" r="0.6" fill="currentColor"/>
+        <circle cx="8" cy="17.5" r="0.6" fill="currentColor"/><circle cx="12" cy="17.5" r="0.6" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
 
   <!-- 日期 -->
   <div class="card row between">
@@ -209,6 +242,18 @@
   </div>
 </dialog>
 
+<!-- 本季行事曆 -->
+<dialog id="calDialog">
+  <div class="row between">
+    <button class="btn small ghost" id="calPrev" aria-label="上一季">‹</button>
+    <h2 id="calTitle" style="margin:0"></h2>
+    <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
+  </div>
+  <p class="muted" style="margin:8px 0 0">綠色是打球日，數字是出席人數；點日期可切換到那天。</p>
+  <div id="calBody"></div>
+  <div class="actions"><button class="btn" id="calClose">關閉</button></div>
+</dialog>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -231,8 +276,10 @@
     members: ['小明', '小美', '阿傑', '佳佳'],
     pool: ['阿華', '小王', 'Kevin'],
     leaves: {},
-    invites: {}
+    invites: {},
+    playDays: []
   };
+  if (!state.playDays) state.playDays = [];
   var date = today();
 
   function load() {
@@ -349,7 +396,79 @@
 
   // 日期
   $('playDate').value = date;
-  $('playDate').onchange = function () { date = this.value || today(); render(); };
+  $('playDate').onchange = function () { setDate(this.value || today()); };
+  function setDate(d) {
+    date = d;
+    $('playDate').value = d;
+    if (state.playDays.indexOf(d) === -1) { state.playDays.push(d); save(); }
+    render();
+  }
+
+  function attendCount(d) {
+    var leaves = leavesOn(d), inv = invitesOn(d);
+    return state.members.filter(function (m) { return leaves.indexOf(m) === -1; }).length +
+      Object.keys(inv).filter(function (n) { return inv[n] === 'yes'; }).length;
+  }
+  function isPlayDay(d) {
+    return state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
+  }
+
+  // 行事曆：顯示一季（三個月）
+  var calYear, calQ;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function renderCal() {
+    $('calTitle').textContent = calYear + ' 年 第 ' + (calQ + 1) + ' 季';
+    var body = $('calBody'); body.innerHTML = '';
+    var t = today();
+    for (var m = calQ * 3; m < calQ * 3 + 3; m++) {
+      var box = document.createElement('div'); box.className = 'month';
+      var h = document.createElement('h3'); h.textContent = (m + 1) + ' 月';
+      var played = 0;
+      var grid = document.createElement('div'); grid.className = 'cal';
+      '日一二三四五六'.split('').forEach(function (w) {
+        var c = document.createElement('div'); c.className = 'wd'; c.textContent = w; grid.appendChild(c);
+      });
+      var first = new Date(calYear, m, 1).getDay();
+      var days = new Date(calYear, m + 1, 0).getDate();
+      for (var i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+      for (var d = 1; d <= days; d++) {
+        var key = calYear + '-' + pad(m + 1) + '-' + pad(d);
+        var b = document.createElement('button');
+        b.className = 'day' + (key === t ? ' today' : '') + (key === date ? ' selected' : '');
+        b.innerHTML = '<span>' + d + '</span>';
+        var label = (m + 1) + '月' + d + '日';
+        if (isPlayDay(key)) {
+          played++;
+          b.classList.add('play');
+          var n = attendCount(key), l = leavesOn(key).length;
+          b.innerHTML += '<span class="n">' + n + '人</span>' + (l ? '<span class="l">假' + l + '</span>' : '');
+          label += '，出席 ' + n + ' 人' + (l ? '，請假 ' + l + ' 人' : '');
+        }
+        b.setAttribute('aria-label', label);
+        b.onclick = (function (k) { return function () { $('calDialog').close(); setDate(k); }; })(key);
+        grid.appendChild(b);
+      }
+      if (played) h.textContent += '・打球 ' + played + ' 次';
+      box.appendChild(h); box.appendChild(grid); body.appendChild(box);
+    }
+  }
+  function shiftQ(step) {
+    calQ += step;
+    if (calQ < 0) { calQ = 3; calYear--; }
+    if (calQ > 3) { calQ = 0; calYear++; }
+    renderCal();
+  }
+  $('calBtn').onclick = function () {
+    var p = date.split('-');
+    calYear = +p[0]; calQ = Math.floor((+p[1] - 1) / 3);
+    renderCal();
+    $('calDialog').showModal();
+    var sel = $('calBody').querySelector('.day.selected');
+    if (sel) sel.closest('.month').scrollIntoView({ block: 'center' });
+  };
+  $('calPrev').onclick = function () { shiftQ(-1); };
+  $('calNext').onclick = function () { shiftQ(1); };
+  $('calClose').onclick = function () { $('calDialog').close(); };
 
   // 功能一：點數字展開名單
   document.querySelectorAll('[data-toggle="detail"]').forEach(function (b) {
@@ -428,7 +547,7 @@
   $('addPersonForm').onsubmit = addName('newPerson', 'pool');
   $('addMemberForm').onsubmit = addName('newMember', 'members');
 
-  render();
+  setDate(date);
 })();
 </script>
 </body>
