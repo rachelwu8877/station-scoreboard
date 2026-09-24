@@ -3,6 +3,8 @@
  *
  * 資料存在這份試算表的「資料」分頁 A1，每一次修改都會記在「紀錄」分頁。
  * 設定步驟請看 badminton-setup.md。
+ *
+ * @OnlyCurrentDoc  只允許存取這一份試算表，碰不到你 Google 雲端硬碟裡的其他檔案
  */
 
 var EMPTY = { members: [], pool: [], leaves: {}, invites: {}, offDays: [] };
