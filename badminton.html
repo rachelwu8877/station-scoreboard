@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>羽球點名板</title>
-<style>
+<style id="page-style">
   :root {
     --bg: #f4f5f2;
     --surface: #ffffff;
@@ -19,18 +19,22 @@
     --danger: #b94a36;
     --danger-bg: #f7e6e2;
     --ok-bg: #e2f1ea;
+    --sub: #2f6fb3;
+    --sub-bg: #e3edf9;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #111513; --surface: #18201c; --surface-2: #202a25; --text: #e8eeea;
       --muted: #94a39b; --border: #2c3831; --accent: #4fc69d; --accent-contrast: #0b1512;
       --leave: #e39a63; --leave-bg: #35251a; --danger: #e1786a; --danger-bg: #3a211d; --ok-bg: #1b3329;
+      --sub: #7fb0e8; --sub-bg: #1c2a3b;
     }
   }
   :root[data-theme="dark"] {
     --bg: #111513; --surface: #18201c; --surface-2: #202a25; --text: #e8eeea;
     --muted: #94a39b; --border: #2c3831; --accent: #4fc69d; --accent-contrast: #0b1512;
     --leave: #e39a63; --leave-bg: #35251a; --danger: #e1786a; --danger-bg: #3a211d; --ok-bg: #1b3329;
+      --sub: #7fb0e8; --sub-bg: #1c2a3b;
   }
 
   * { box-sizing: border-box; }
@@ -70,16 +74,7 @@
   }
 
   /* 功能一：人數總覽 */
-  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-  .stat {
-    border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: left;
-    background: var(--surface-2); color: var(--text);
-  }
-  .stat b { display: block; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .stat.is-leave b { color: var(--leave); }
-  .stat.is-attend b { color: var(--accent); }
-  .detail { margin-top: 12px; display: none; }
-  .detail.open { display: block; }
+  .detail { margin-top: 4px; }
   .detail h3 { font-size: 14px; margin: 12px 0 6px; color: var(--muted); font-weight: 600; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -88,6 +83,7 @@
     padding: 5px 12px; font-size: 14px; border: 1px solid var(--border); background: var(--surface-2);
   }
   .chip.attend { background: var(--ok-bg); border-color: transparent; }
+  .chip.sub { background: var(--sub-bg); border-color: transparent; }
   .chip.leave { background: var(--leave-bg); border-color: transparent; }
   .chip:has(.x) { padding-right: 2px; }
   .chip .x {
@@ -97,19 +93,17 @@
   .chip .x:hover, .chip .x:active { background: rgba(0, 0, 0, 0.08); color: var(--text); }
   .tag { font-size: 12px; color: var(--muted); }
 
-  /* 功能三：可約的人 */
-  .people { list-style: none; margin: 12px 0 0; padding: 0; }
-  .people li {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 10px 0; border-top: 1px solid var(--border);
+  /* 功能三：可約的人（小卡片） */
+  .chip.pool { padding-left: 0; gap: 0; }
+  .chip.pool.yes { background: var(--sub-bg); border-color: transparent; }
+  .chip.pool.no .name-btn { color: var(--muted); text-decoration: line-through; }
+  .name-btn {
+    border: 0; background: none; color: var(--text); font-weight: 600; font-size: 14px;
+    padding: 5px 6px 5px 12px; margin: -5px 0; border-radius: 999px;
   }
-  .people li:first-child { border-top: 0; }
-  .name-btn { border: 0; background: none; color: var(--text); font-weight: 600; padding: 0; text-align: left; }
-  .name-btn:hover { text-decoration: underline; }
-  .status { font-size: 12px; border-radius: 999px; padding: 2px 8px; margin-left: 6px; font-weight: 600; }
-  .status.yes { background: var(--ok-bg); color: var(--accent); }
-  .status.no { background: var(--danger-bg); color: var(--danger); }
-  .rejected .name-btn { color: var(--muted); text-decoration: line-through; }
+  .chip.pool .tag { margin-right: 2px; }
+  .chip.pool.yes .tag { color: var(--sub); font-weight: 600; }
+  .chip.pool.no .tag { color: var(--danger); font-weight: 600; }
 
   /* 對話框 */
   dialog {
@@ -119,50 +113,39 @@
   dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
 
   /* 行事曆 */
-  .icon-btn {
-    width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--accent); display: grid; place-items: center; padding: 0;
+  .cal-head { text-align: center; }
+  .cal-nav { display: flex; align-items: center; justify-content: center; gap: 12px; }
+
+  /* 明細表：月份 × 打球日 */
+  .sheet { width: 100%; border-collapse: collapse; margin-top: 14px; table-layout: fixed; }
+  .sheet th, .sheet td { border: 1.5px solid var(--text-line, var(--muted)); text-align: center; padding: 0; }
+  .sheet th { font-size: 14px; font-weight: 700; background: var(--surface-2); width: 44px; }
+  .sheet td.empty { background: var(--surface); }
+  .sheet .cell {
+    width: 100%; min-height: 54px; border: 0; background: none; color: var(--text); padding: 4px 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   }
-  .icon-btn svg { width: 22px; height: 22px; }
-  #calDialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding-top: 0; }
-  .cal-head {
-    position: sticky; top: 0; z-index: 1; background: var(--surface);
-    padding: 14px 0 10px; border-bottom: 1px solid var(--border);
+  .sheet .d { font-size: 17px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .sheet .c { font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .sheet .lv { font-size: 10px; color: var(--leave); }
+  .sheet .sb { font-size: 10px; color: var(--sub); }
+  .sheet .extra { display: flex; gap: 4px; justify-content: center; white-space: nowrap; }
+  .sheet td.off { background: var(--danger-bg); }
+  .sheet .hol { font-size: 10px; color: var(--danger); font-weight: 700; line-height: 1.2; }
+  .holiday-note {
+    display: none; margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+    background: var(--leave-bg); color: var(--leave); font-size: 14px; font-weight: 600;
   }
-  .close-x {
-    position: absolute; top: 10px; right: -8px; width: 40px; height: 40px; border-radius: 50%;
-    border: 0; background: none; color: var(--muted); font-size: 24px; line-height: 1;
-  }
-  .month { margin-top: 16px; }
-  .month h3 { font-size: 14px; margin: 0 0 6px; }
-  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-  .cal .wd { font-size: 11px; color: var(--muted); text-align: center; padding: 2px 0; }
-  .day {
-    border: 1px solid transparent; border-radius: 8px; background: none; color: var(--text);
-    min-height: 44px; padding: 3px 0; display: flex; flex-direction: column; align-items: center;
-    font-size: 12px; font-variant-numeric: tabular-nums;
-  }
-  .day.play { background: var(--ok-bg); }
-  .day.today { border-color: var(--border); }
-  .day.selected { border-color: var(--accent); }
-  .day .n { font-weight: 700; color: var(--accent); font-size: 13px; }
-  .day .l { font-size: 10px; color: var(--leave); }
-  .day.off { background: var(--danger-bg); }
-  .day.off .n { color: var(--danger); }
-  .day.out { opacity: 0.3; }
+  .holiday-note.show { display: block; }
+  .sheet td.off .d, .sheet td.off .c { color: var(--danger); }
+  .sheet td.past .d { opacity: 0.55; }
+  .sheet td.sel { outline: 2px solid var(--accent); outline-offset: -3px; }
   .off-banner {
     display: none; margin-top: 12px; padding: 14px; border-radius: 12px; text-align: center;
     background: var(--danger-bg); color: var(--danger); font-weight: 700;
   }
   .is-off .off-banner { display: block; }
-  .is-off .stats, .is-off .detail, .is-off .hint, .is-off #leaveBtn { display: none !important; }
-  .list { list-style: none; margin: 12px 0 0; padding: 0; }
-  .list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
-  .list li:first-child { border-top: 0; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .form-grid input { width: 100%; }
-  .form-grid .full { grid-column: 1 / -1; }
-  .settings-h { font-size: 14px; margin: 18px 0 0; }
+  .is-off .detail { display: none !important; }
   dialog h2 { margin-bottom: 12px; }
   dialog label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
   dialog select, dialog input { width: 100%; }
@@ -177,33 +160,42 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   details summary { cursor: pointer; font-weight: 600; }
+
+  /* 共用儲存 */
+  .save-status { min-height: 20px; margin: 2px 0 0; font-size: 13px; }
+  .import-bar { border-color: var(--sub); background: var(--sub-bg); }
+  .import-bar p { margin: 0 0 10px; }
+  .saving .wrap { pointer-events: none; opacity: 0.6; }
+  .read-only .chip .x, .read-only #addPersonForm, .read-only #addMemberForm,
+  .read-only #offToggle, .read-only #importBar { display: none !important; }
+  .read-only .name-btn { pointer-events: none; }
+  .read-only .chip:has(.x) { padding-right: 12px; }
 </style>
 </head>
 <body>
+<template id="page-markup">
 <div class="wrap">
-  <div class="row between" style="flex-wrap:nowrap">
-    <div>
-      <h1>🏸 羽球點名板</h1>
-      <p class="muted" style="margin:0">誰請假、誰出席、還能約誰，一頁看完。</p>
-    </div>
-    <button class="icon-btn" id="calBtn" aria-label="開啟本季行事曆" title="本季行事曆">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>
-        <circle cx="8" cy="14" r="0.6" fill="currentColor"/><circle cx="12" cy="14" r="0.6" fill="currentColor"/><circle cx="16" cy="14" r="0.6" fill="currentColor"/>
-        <circle cx="8" cy="17.5" r="0.6" fill="currentColor"/><circle cx="12" cy="17.5" r="0.6" fill="currentColor"/>
-      </svg>
-    </button>
+  <h1>🏸 羽球點名板</h1>
+  <p class="muted save-status" id="saveStatus" role="status"></p>
+
+  <!-- 第一次使用：把這台裝置上的舊資料匯入共用版 -->
+  <div class="card import-bar" id="importBar" hidden>
+    <p id="importText"></p>
+    <button class="btn primary small" id="importBtn">匯入</button>
+    <button class="btn ghost small" id="importSkip">不用</button>
   </div>
 
-  <!-- 日期 -->
-  <div class="card row between">
-    <label class="row" for="playDate"><strong>打球日</strong></label>
-    <span class="row" style="gap:8px">
-      <span class="muted" id="weekdayLabel"></span>
-      <input type="date" id="playDate">
-    </span>
-    <div class="row between" style="width:100%">
-      <span class="muted" id="seasonLabel"></span>
+  <!-- 本季行事曆 -->
+  <div class="card" id="calCard">
+    <div class="cal-head">
+      <div class="cal-nav">
+        <button class="btn small ghost" id="calPrev" aria-label="上一季">‹</button>
+        <h2 id="calTitle" style="margin:0"></h2>
+        <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
+      </div>
+    </div>
+    <div id="calBody"></div>
+    <div class="row" style="justify-content:flex-end; margin-top:12px">
       <button class="btn small" id="offToggle"></button>
     </div>
   </div>
@@ -211,30 +203,27 @@
   <!-- 功能一 + 功能二 -->
   <div class="card" id="statusCard">
     <div class="row between">
-      <h2>出席狀況</h2>
-      <button class="btn leave" id="leaveBtn">我要請假</button>
-    </div>
-    <div class="stats" style="margin-top:12px">
-      <button class="stat is-attend" data-toggle="detail">出席<b id="attendCount">0</b></button>
-      <button class="stat is-leave" data-toggle="detail">請假<b id="leaveCount">0</b></button>
+      <h2 id="statusDate"></h2>
     </div>
     <div class="detail" id="detail">
       <h3>出席</h3>
       <div class="chips" id="attendList"></div>
       <h3>請假</h3>
       <div class="chips" id="leaveList"></div>
+      <h3>候補</h3>
+      <div class="chips" id="subList"></div>
     </div>
+    <div class="holiday-note" id="holidayNote"></div>
     <div class="off-banner">這天全員請假，不打球 🏖️</div>
-    <p class="muted hint" style="margin:10px 0 0">點上面的數字可以看名單</p>
   </div>
 
   <!-- 功能三 + 功能四 -->
-  <div class="card">
+  <div class="card" id="poolCard">
     <div class="row between">
       <h2>可以約的人</h2>
-      <span class="muted">點名字詢問是否候補</span>
+      <span class="muted">點名字加入候補</span>
     </div>
-    <ul class="people" id="people"></ul>
+    <div class="chips" id="people" style="margin-top:12px"></div>
     <div class="row" id="addPersonForm" style="margin-top:12px">
       <input type="text" id="newPerson" placeholder="新增可約的人" style="flex:1">
       <button class="btn small" type="button" data-submit>新增</button>
@@ -242,7 +231,7 @@
   </div>
 
   <!-- 固定成員設定 -->
-  <div class="card">
+  <div class="card" id="memberCard">
     <details>
       <summary>固定成員（預設都出席）</summary>
       <div class="chips" id="memberList" style="margin-top:12px"></div>
@@ -252,56 +241,7 @@
       </div>
     </details>
   </div>
-
-  <!-- 季度與全員請假設定 -->
-  <div class="card">
-    <details id="settings">
-      <summary>季度與全員請假日</summary>
-      <h3 class="settings-h">季度</h3>
-      <p class="muted" style="margin:2px 0 0">自訂每一季的起訖日期，季內每週三自動排為打球日。</p>
-      <ul class="list" id="seasonList"></ul>
-      <div class="form-grid" id="addSeasonForm">
-        <input type="text" id="seasonName" class="full" placeholder="季名稱，例如：2026 秋季" required>
-        <label class="muted" style="font-size:13px">開始<input type="date" id="seasonStart" required></label>
-        <label class="muted" style="font-size:13px">結束<input type="date" id="seasonEnd" required></label>
-        <button class="btn small full" type="button" data-submit>新增季度</button>
-      </div>
-      <h3 class="settings-h">全員請假日</h3>
-      <p class="muted" style="margin:2px 0 0">例如國定假日、場地不開，這天不打球。</p>
-      <ul class="list" id="offList"></ul>
-      <div class="row" id="addOffForm" style="margin-top:12px">
-        <input type="date" id="offDate" required style="flex:1">
-        <button class="btn small" type="button" data-submit>新增</button>
-      </div>
-    </details>
-  </div>
 </div>
-
-<!-- 請假對話框 -->
-<dialog id="leaveDialog">
-  <div id="leaveForm">
-    <h2>請假</h2>
-    <label for="leaveName">誰要請假</label>
-    <select id="leaveName" required></select>
-    <label for="leaveDate">日期</label>
-    <input type="date" id="leaveDate" required>
-    <div class="actions">
-      <button class="btn ghost" type="button" id="leaveCancel">取消</button>
-      <button class="btn leave" type="button" id="leaveOk">確定請假</button>
-    </div>
-  </div>
-</dialog>
-
-<!-- 候補對話框 -->
-<dialog id="inviteDialog">
-  <h2 id="inviteTitle"></h2>
-  <p class="muted" style="margin:0">選「是」會加入出席名單，選「否」會標記已拒絕。</p>
-  <div class="actions">
-    <button class="btn ghost" id="inviteCancel">取消</button>
-    <button class="btn" id="inviteNo">否</button>
-    <button class="btn primary" id="inviteYes">是</button>
-  </div>
-</dialog>
 
 <!-- 確認對話框（不用瀏覽器的 confirm，因為內嵌頁面常會被擋掉） -->
 <dialog id="confirmDialog">
@@ -312,106 +252,254 @@
   </div>
 </dialog>
 
-<!-- 本季行事曆 -->
-<dialog id="calDialog">
-  <div class="cal-head">
-    <button class="close-x" id="calX" aria-label="關閉行事曆">✕</button>
-    <div class="row" style="justify-content:center; gap:12px; padding-right:28px">
-      <button class="btn small ghost" id="calPrev" aria-label="上一季">‹</button>
-      <h2 id="calTitle" style="margin:0"></h2>
-      <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
-    </div>
-    <p class="muted" id="calRange" style="margin:6px 0 0; text-align:center"></p>
-  </div>
-  <p class="muted" style="margin:8px 0 0">綠色是打球日（數字是出席人數），紅色是全員請假；點日期可切換到那天。</p>
-  <div id="calBody"></div>
-  <div class="actions"><button class="btn" id="calClose">關閉</button></div>
-</dialog>
 
 <div class="toast" id="toast" role="status"></div>
-
-<script>
+</template>
+<script id="board-data" type="application/json">{"initial":true,"members":[],"pool":[],"leaves":{},"invites":{},"offDays":[]}</script>
+<script id="page-script">
 (function () {
-  var STORAGE_KEY = 'badminton-board-v1';
+  var $ = function (id) { return document.getElementById(id); };
+  // 畫面結構放在 <template> 裡，儲存時才能原封不動地重新產生整頁
+  var tpl = $('page-markup');
+  tpl.parentNode.insertBefore(tpl.content.cloneNode(true), tpl);
+
+  // Google 試算表共用資料庫的網址（設定方式見 badminton-setup.md）；留空就不用
+  var API_URL = '';
+  var OLD_STORAGE_KEY = 'badminton-board-v1'; // 改成共用前，資料存在各自的瀏覽器
   var WEEKLY_DAY = 3; // 固定每週三打球（0=日 … 6=六）
   var WEEKDAYS = '日一二三四五六';
-  var $ = function (id) { return document.getElementById(id); };
+  var START_DATE = '2026-10-01'; // 資料從 2026 第四季開始
+  // 落在週三的國定假日（含補假），依人事行政總處規則推算；之後年份再往下加
+  var HOLIDAYS = {
+    '2027-02-10': '春節補假',
+    '2027-06-09': '端午節',
+    '2027-09-15': '中秋節',
+    '2028-01-26': '春節',
+    '2028-10-25': '光復節'
+  };
 
-  function today() {
-    var d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
-  }
-
-  // 資料結構：
+  // 資料結構（存在頁面裡的 board-data）：
   // members: 固定成員（預設出席）
   // pool: 可以約的人
-  // leaves: { "2026-09-24": ["小明"] }
-  // invites: { "2026-09-24": { "阿華": "yes" | "no" } }
-  var state = load() || {
-    members: ['小明', '小美', '阿傑', '佳佳'],
-    pool: ['阿華', '小王', 'Kevin'],
-    leaves: {},
-    invites: {},
-    playDays: [],
-    seasons: [],   // [{ name, start, end }]
-    offDays: []    // 全員請假日
-  };
-  if (!state.playDays) state.playDays = [];
-  if (!state.seasons) state.seasons = [];
-  if (!state.offDays) state.offDays = [];
+  // leaves: { "2026-10-07": ["小明"] }
+  // invites: { "2026-10-07": { "阿華": "yes" } }
+  // offDays: 全員請假日
+  function normalize(d) {
+    d = d || {};
+    return {
+      members: Array.isArray(d.members) ? d.members.slice() : [],
+      pool: Array.isArray(d.pool) ? d.pool.slice() : [],
+      leaves: d.leaves && typeof d.leaves === 'object' ? JSON.parse(JSON.stringify(d.leaves)) : {},
+      invites: d.invites && typeof d.invites === 'object' ? JSON.parse(JSON.stringify(d.invites)) : {},
+      offDays: Array.isArray(d.offDays) ? d.offDays.slice() : []
+    };
+  }
+  var DATA = {};
+  try { DATA = JSON.parse($('board-data').textContent) || {}; } catch (e) { DATA = {}; }
+  var state = normalize(DATA);
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmt(dt) { return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()); }
-  function sortedSeasons() {
-    return state.seasons.slice().sort(function (a, b) { return a.start < b.start ? -1 : 1; });
-  }
-  function seasonOf(d) {
-    for (var i = 0; i < state.seasons.length; i++) {
-      var x = state.seasons[i];
-      if (d >= x.start && d <= x.end) return x;
-    }
-    return null;
-  }
-  function inSeason(d) { return !state.seasons.length || !!seasonOf(d); }
+  function today() { return fmt(new Date()); }
   function isOff(d) { return state.offDays.indexOf(d) !== -1; }
-
   function weekdayOf(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).getDay(); }
-  // 下一個固定球日（今天剛好是就用今天）
+  function leavesOn(d) { return state.leaves[d] || []; }
+  function invitesOn(d) { return state.invites[d] || {}; }
+
+  // 下一個固定球日（今天剛好是就用今天），跳過全員請假日
   function nextPlayDay() {
     var d = new Date();
     d.setDate(d.getDate() + (WEEKLY_DAY - d.getDay() + 7) % 7);
     var first = fmt(d);
-    // 跳過全員請假日與季外日期
     for (var i = 0; i < 60; i++) {
       var k = fmt(d);
-      if (inSeason(k) && !isOff(k)) return k;
+      if (k >= START_DATE && !isOff(k)) return k;
       d.setDate(d.getDate() + 7);
     }
     return first;
   }
-  var date = nextPlayDay();
+  // 儲存後頁面會重新載入，記住剛剛看的日期和捲動位置
+  var date = nextPlayDay(), restoreScroll = 0;
+  try {
+    var kept = sessionStorage.getItem('bb-date');
+    if (kept && /^\d{4}-\d{2}-\d{2}$/.test(kept) && kept >= START_DATE) date = kept;
+    restoreScroll = +sessionStorage.getItem('bb-scroll') || 0;
+    sessionStorage.removeItem('bb-scroll');
+  } catch (e) { /* 忽略 */ }
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
+  // ---- 儲存：大家共用同一份資料 ----
+  // api：存到 Google 試算表，不用登入；shared：在 Claude 裡發布成新版本；
+  // local：都沒有時（例如直接開檔案）存在這台瀏覽器
+  var mode = 'pending', api = null, readOnly = false, pendingSave = false, saveTimer = null, retried = false;
+
+  function setStatus(msg) { $('saveStatus').textContent = msg || ''; }
+  function loadOld() {
+    try { return JSON.parse(localStorage.getItem(OLD_STORAGE_KEY)); } catch (e) { return null; }
+  }
+  function cleaned() {
+    var out = normalize(state);
+    Object.keys(out.leaves).forEach(function (k) { if (!out.leaves[k].length) delete out.leaves[k]; });
+    Object.keys(out.invites).forEach(function (k) { if (!Object.keys(out.invites[k]).length) delete out.invites[k]; });
+    return out;
+  }
+  function buildPage() {
+    var data = cleaned();
+    var json = JSON.stringify(data).replace(/</g, '\\u003c');
+    var end = '</' + 'script>';
+    return '<!DOCTYPE html>\n<html lang="zh-Hant">\n<head>\n<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>羽球點名板</title>\n' +
+      '<style id="page-style">' + $('page-style').textContent + '</style>\n</head>\n<body>\n' +
+      '<template id="page-markup">' + tpl.innerHTML + '</template>\n' +
+      '<script id="board-data" type="application/json">' + json + end + '\n' +
+      '<script id="page-script">' + $('page-script').textContent + end + '\n</body>\n</html>\n';
   }
   function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ }
+    if (readOnly) return;
+    if (mode === 'api') { apiSave(); return; }
+    if (mode === 'local') {
+      try { localStorage.setItem(OLD_STORAGE_KEY, JSON.stringify(cleaned())); } catch (e) { /* 忽略 */ }
+    } else if (mode === 'shared') {
+      setStatus('儲存中…');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(publish, 1200); // 連續點幾下合併成一次儲存
+    } else {
+      pendingSave = true; // 共用功能還在連線，連上後再存
+    }
+  }
+  function publish() {
+    try {
+      sessionStorage.setItem('bb-date', date);
+      sessionStorage.setItem('bb-scroll', String(window.scrollY || 0));
+    } catch (e) { /* 忽略 */ }
+    document.body.classList.add('saving');
+    api.publish(buildPage()).then(function () {
+      setStatus('已儲存'); // 接著頁面會自動重新載入成最新版
+    }, function (err) {
+      document.body.classList.remove('saving');
+      var code = err && err.code;
+      if (code === 'conflict') {
+        setStatus('別人剛更新了，正在載入最新版…');
+      } else if (['not_writer', 'not_granted', 'consent_required', 'capability_disabled', 'capability_removed', 'not_declared'].indexOf(code) !== -1) {
+        becomeReadOnly();
+      } else if (code === 'rate_limited') {
+        setStatus('儲存太頻繁，稍後自動再存一次…');
+        saveTimer = setTimeout(publish, 5000);
+      } else if (!retried && (code === 'upstream_error' || !code)) {
+        retried = true;
+        saveTimer = setTimeout(publish, 1000 + Math.random() * 1500);
+      } else {
+        setStatus('儲存失敗，請再試一次');
+        retried = false;
+      }
+    });
+  }
+  function becomeReadOnly() {
+    readOnly = true;
+    document.body.classList.add('read-only');
+    state = normalize(DATA); // 回到大家看到的版本
+    render();
+    setStatus('你目前只能檢視，需要編輯權限才能修改');
+  }
+  function showImportOffer() {
+    var old = loadOld();
+    if (!DATA.initial || !old || !((old.members || []).length || (old.pool || []).length)) return;
+    $('importText').textContent = '這台裝置上有之前存的名單（固定成員 ' + (old.members || []).length +
+      ' 位、可以約的人 ' + (old.pool || []).length + ' 位），要匯入給大家共用嗎？';
+    $('importBar').hidden = false;
+    $('importBtn').onclick = function () { $('importBar').hidden = true; state = normalize(old); render(); save(); };
+    $('importSkip').onclick = function () { $('importBar').hidden = true; };
+  }
+  // ---- Google 試算表模式 ----
+  // server：試算表上最後一次看到的資料；改完後把「和 server 的差別」逐項送出
+  var server = null, dirty = false, inflight = false, apiTimer = null;
+  function diffOps(a, b) {
+    var ops = [];
+    function list(type, x, y) {
+      y.forEach(function (n) { if (x.indexOf(n) === -1) ops.push({ type: type, name: n, on: true }); });
+      x.forEach(function (n) { if (y.indexOf(n) === -1) ops.push({ type: type, name: n, on: false }); });
+    }
+    list('member', a.members, b.members);
+    list('pool', a.pool, b.pool);
+    var dates = {};
+    [a.leaves, b.leaves, a.invites, b.invites].forEach(function (o) { Object.keys(o).forEach(function (k) { dates[k] = 1; }); });
+    Object.keys(dates).forEach(function (d) {
+      var la = a.leaves[d] || [], lb = b.leaves[d] || [];
+      lb.forEach(function (n) { if (la.indexOf(n) === -1) ops.push({ type: 'leave', date: d, name: n, on: true }); });
+      la.forEach(function (n) { if (lb.indexOf(n) === -1) ops.push({ type: 'leave', date: d, name: n, on: false }); });
+      var ia = a.invites[d] || {}, ib = b.invites[d] || {};
+      Object.keys(ib).forEach(function (n) { if (ib[n] === 'yes' && ia[n] !== 'yes') ops.push({ type: 'sub', date: d, name: n, on: true }); });
+      Object.keys(ia).forEach(function (n) { if (ia[n] === 'yes' && ib[n] !== 'yes') ops.push({ type: 'sub', date: d, name: n, on: false }); });
+    });
+    b.offDays.forEach(function (d) { if (a.offDays.indexOf(d) === -1) ops.push({ type: 'off', date: d, on: true }); });
+    a.offDays.forEach(function (d) { if (b.offDays.indexOf(d) === -1) ops.push({ type: 'off', date: d, on: false }); });
+    return ops;
+  }
+  function apiSave() {
+    dirty = true;
+    setStatus('儲存中…');
+    clearTimeout(apiTimer);
+    apiTimer = setTimeout(apiFlush, 400);
+  }
+  function apiFlush() {
+    if (inflight || !server) return;
+    var ops = diffOps(server, state);
+    dirty = false;
+    if (!ops.length) { setStatus(''); return; }
+    inflight = true;
+    // text/plain 才不會被瀏覽器擋（Apps Script 不支援預檢請求）
+    fetch(API_URL, { method: 'POST', body: JSON.stringify({ ops: ops }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        inflight = false;
+        if (!res.ok) throw new Error(res.error);
+        server = normalize(res.state);
+        if (dirty) { apiFlush(); return; }
+        state = normalize(server); render();
+        setStatus('已儲存');
+      })
+      .catch(function () {
+        inflight = false; dirty = true;
+        setStatus('儲存失敗，稍後自動再試…');
+        clearTimeout(apiTimer);
+        apiTimer = setTimeout(apiFlush, 5000);
+      });
+  }
+  // 定時拿最新資料，看到別人的修改
+  function apiLoad(first) {
+    if (inflight || dirty) return;
+    fetch(API_URL).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res.ok || inflight || dirty) return;
+      server = normalize(res.state);
+      state = normalize(server); render();
+      if (first) setStatus('');
+    }).catch(function () { if (first) setStatus('連不上共用資料，請稍後重新整理'); });
   }
 
-  function leavesOn(d) { return state.leaves[d] || []; }
-  function invitesOn(d) { return state.invites[d] || {}; }
+  if (API_URL) {
+    mode = 'api';
+    setStatus('讀取中…');
+    apiLoad(true);
+    setInterval(apiLoad, 20000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) apiLoad(); });
+  }
+  var ready = API_URL ? Promise.resolve(false)
+    : window.claude && window.claude.use ? window.claude.use('artifact') : Promise.resolve(null);
+  Promise.resolve(ready).then(function (a) {
+    if (a === false) return; // 用 Google 試算表
+    if (a) { api = a; mode = 'shared'; showImportOffer(); }
+    else {
+      mode = 'local';
+      var old = loadOld();
+      if (old) { state = normalize(old); render(); }
+    }
+    if (pendingSave) { pendingSave = false; save(); }
+  }, function () { mode = 'local'; });
 
-  function chip(text, cls, onRemove, tag) {
+  // ---- 畫面 ----
+  function chip(text, cls, onRemove) {
     var el = document.createElement('span');
     el.className = 'chip ' + (cls || '');
     el.textContent = text;
-    if (tag) {
-      var t = document.createElement('span');
-      t.className = 'tag';
-      t.textContent = tag;
-      el.appendChild(t);
-    }
     if (onRemove) {
       var x = document.createElement('button');
       x.className = 'x';
@@ -424,23 +512,26 @@
     return el;
   }
 
-  function render() {
+  function render() { renderMain(); renderCal(); }
+  function renderMain() {
     var off = isOff(date);
     $('statusCard').classList.toggle('is-off', off);
-    $('offToggle').textContent = off ? '取消全員請假' : '設為全員請假';
-    var ss = seasonOf(date);
-    $('seasonLabel').textContent = ss ? ss.name : (state.seasons.length ? '不在任何季度內' : '');
-    renderSettings();
+    // 全員請假就不用約人，也不用看成員
+    $('poolCard').hidden = off;
+    $('memberCard').hidden = off;
+    var p = date.split('-'), md = +p[1] + '/' + +p[2] + '（' + WEEKDAYS[weekdayOf(date)] + '）';
+    $('statusDate').textContent = md;
+    var hol = HOLIDAYS[date];
+    $('holidayNote').textContent = hol ? '⚠️ 這天是國定假日（' + hol + '），' + (off ? '已設為全員請假' : '要不要設為全員請假？') : '';
+    $('holidayNote').classList.toggle('show', !!hol);
+    $('offToggle').textContent = off ? '取消全員請假' : '這天全員請假';
 
     var leaves = leavesOn(date);
     var invites = invitesOn(date);
     var attend = state.members.filter(function (m) { return leaves.indexOf(m) === -1; });
     var extras = Object.keys(invites).filter(function (n) { return invites[n] === 'yes'; });
 
-    // 功能一
-    $('attendCount').textContent = attend.length + extras.length;
-    $('leaveCount').textContent = leaves.length;
-
+    // 功能一：出席／請假／候補名單
     var al = $('attendList'); al.innerHTML = '';
     attend.forEach(function (n) {
       al.appendChild(chip(n, 'attend', function () {
@@ -449,12 +540,6 @@
         save(); render();
         toast(n + ' 改為請假');
       }));
-    });
-    extras.forEach(function (n) {
-      al.appendChild(chip(n, 'attend', function () {
-        delete invites[n]; save(); render();
-        toast(n + ' 已從出席移除');
-      }, '候補'));
     });
     if (!al.children.length) al.innerHTML = '<span class="muted">沒有人</span>';
 
@@ -467,33 +552,33 @@
     });
     if (!ll.children.length) ll.innerHTML = '<span class="muted">沒有人請假</span>';
 
-    // 功能三 + 四
-    var ul = $('people'); ul.innerHTML = '';
-    state.pool.forEach(function (n) {
-      var li = document.createElement('li');
-      if (invites[n] === 'no') li.className = 'rejected';
+    var sl = $('subList'); sl.innerHTML = '';
+    extras.forEach(function (n) {
+      sl.appendChild(chip(n, 'sub', function () {
+        delete invites[n]; save(); render();
+        toast(n + ' 已從候補移除');
+      }));
+    });
+    if (!sl.children.length) sl.innerHTML = '<span class="muted">沒有人</span>';
 
-      var left = document.createElement('div');
+    // 功能三：可約的人（點名字加入／取消候補，× 刪除）
+    var pl = $('people'); pl.innerHTML = '';
+    state.pool.forEach(function (n) {
+      var el = document.createElement('span');
+      el.className = 'chip pool' + (invites[n] ? ' ' + invites[n] : '');
       var nameBtn = document.createElement('button');
       nameBtn.className = 'name-btn';
       nameBtn.textContent = n;
-      nameBtn.onclick = function () { openInvite(n); };
-      left.appendChild(nameBtn);
+      nameBtn.onclick = function () { toggleSub(n); };
+      el.appendChild(nameBtn);
       if (invites[n]) {
-        var s = document.createElement('span');
-        s.className = 'status ' + invites[n];
-        s.textContent = invites[n] === 'yes' ? '已加入' : '已拒絕';
-        left.appendChild(s);
+        var t = document.createElement('span');
+        t.className = 'tag';
+        t.textContent = invites[n] === 'yes' ? '已加入' : '已拒絕';
+        el.appendChild(t);
       }
-
-      var right = document.createElement('div');
-      right.className = 'row';
-      var copy = document.createElement('button');
-      copy.className = 'btn small';
-      copy.textContent = '複製邀請';
-      copy.onclick = function () { copyText(n + '加打球嗎？'); };
       var del = document.createElement('button');
-      del.className = 'btn small ghost';
+      del.className = 'x';
       del.setAttribute('aria-label', '刪除 ' + n);
       del.textContent = '×';
       del.onclick = function () {
@@ -502,14 +587,10 @@
           save(); render();
         });
       };
-      right.appendChild(copy);
-      right.appendChild(del);
-
-      li.appendChild(left);
-      li.appendChild(right);
-      ul.appendChild(li);
+      el.appendChild(del);
+      pl.appendChild(el);
     });
-    if (!state.pool.length) ul.innerHTML = '<li class="muted">還沒有人，下面新增吧</li>';
+    if (!state.pool.length) pl.innerHTML = '<span class="muted">還沒有人，下面新增吧</span>';
 
     // 固定成員
     var ml = $('memberList'); ml.innerHTML = '';
@@ -521,40 +602,7 @@
         });
       }));
     });
-  }
-
-  function renderSettings() {
-    var sl = $('seasonList'); sl.innerHTML = '';
-    sortedSeasons().forEach(function (x) {
-      var li = document.createElement('li');
-      li.innerHTML = '<span><strong></strong><br><span class="muted"></span></span>';
-      li.querySelector('strong').textContent = x.name;
-      li.querySelector('.muted').textContent = x.start + ' ～ ' + x.end;
-      var del = document.createElement('button');
-      del.className = 'btn small ghost'; del.textContent = '×';
-      del.setAttribute('aria-label', '刪除 ' + x.name);
-      del.onclick = function () {
-        askConfirm('要刪除「' + x.name + '」嗎？', function () {
-          state.seasons = state.seasons.filter(function (y) { return y !== x; });
-          save(); render();
-        });
-      };
-      li.appendChild(del); sl.appendChild(li);
-    });
-    if (!state.seasons.length) sl.innerHTML = '<li class="muted">還沒設定，行事曆會先用一般季度（1–3 月…）</li>';
-
-    var ol = $('offList'); ol.innerHTML = '';
-    state.offDays.slice().sort().forEach(function (d) {
-      var li = document.createElement('li');
-      var t = document.createElement('span');
-      t.textContent = d + '（週' + WEEKDAYS[weekdayOf(d)] + '）';
-      var del = document.createElement('button');
-      del.className = 'btn small ghost'; del.textContent = '×';
-      del.setAttribute('aria-label', '取消 ' + d + ' 全員請假');
-      del.onclick = function () { toggleOff(d); };
-      li.appendChild(t); li.appendChild(del); ol.appendChild(li);
-    });
-    if (!state.offDays.length) ol.innerHTML = '<li class="muted">目前沒有</li>';
+    if (!state.members.length) ml.innerHTML = '<span class="muted">還沒有成員，下面新增吧</span>';
   }
 
   function toggleOff(d) {
@@ -571,144 +619,103 @@
     var box = $(id);
     box.querySelector('[data-submit]').onclick = fn;
     box.querySelectorAll('input').forEach(function (inp) {
-      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); fn(); } });
+      // 中文輸入法選字時按 Enter／空白鍵不算送出
+      var composing = false, composeEnd = 0;
+      inp.addEventListener('compositionstart', function () { composing = true; });
+      inp.addEventListener('compositionend', function () { composing = false; composeEnd = Date.now(); });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        if (composing || e.isComposing || e.keyCode === 229 || Date.now() - composeEnd < 100) return;
+        e.preventDefault(); fn();
+      });
     });
   }
-  onSubmit('addOffForm', function () {
-    var d = $('offDate').value;
-    if (!d) { toast('請先選日期'); return; }
-    if (!isOff(d)) toggleOff(d);
-    $('offDate').value = '';
-    toast(d + ' 設為全員請假');
-  });
-  onSubmit('addSeasonForm', function () {
-    var n = $('seasonName').value.trim(), a = $('seasonStart').value, b = $('seasonEnd').value;
-    if (!n || !a || !b) { toast('請填季名稱、開始和結束日期'); return; }
-    if (a > b) { toast('結束日期要在開始日期之後'); return; }
-    state.seasons.push({ name: n, start: a, end: b });
-    save(); render();
-    $('seasonName').value = $('seasonStart').value = $('seasonEnd').value = '';
-    toast('已新增 ' + n);
-  });
 
-  // 日期
-  $('playDate').value = date;
-  $('playDate').onchange = function () { setDate(this.value || today()); };
   function setDate(d) {
     date = d;
-    $('playDate').value = d;
-    $('weekdayLabel').textContent = '週' + WEEKDAYS[weekdayOf(d)];
-    if (weekdayOf(d) !== WEEKLY_DAY && state.playDays.indexOf(d) === -1) { state.playDays.push(d); save(); }
+    focusCal();
     render();
   }
 
+  function subCount(d) {
+    var inv = invitesOn(d);
+    return Object.keys(inv).filter(function (n) { return inv[n] === 'yes'; }).length;
+  }
   function attendCount(d) {
-    var leaves = leavesOn(d), inv = invitesOn(d);
-    return state.members.filter(function (m) { return leaves.indexOf(m) === -1; }).length +
-      Object.keys(inv).filter(function (n) { return inv[n] === 'yes'; }).length;
+    var leaves = leavesOn(d);
+    return state.members.filter(function (m) { return leaves.indexOf(m) === -1; }).length + subCount(d);
   }
   function isPlayDay(d) {
-    if (isOff(d)) return false;
-    return (weekdayOf(d) === WEEKLY_DAY && inSeason(d)) || state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
+    return !isOff(d) && d >= START_DATE && weekdayOf(d) === WEEKLY_DAY;
   }
 
-  // 行事曆：有自訂季度就依季度顯示，否則用一般季度（三個月）
-  var calIdx, calYear, calQ;
-  function calRange() {
-    var list = sortedSeasons();
-    if (list.length) {
-      var x = list[calIdx];
-      return { title: x.name, start: x.start, end: x.end, hasPrev: calIdx > 0, hasNext: calIdx < list.length - 1 };
-    }
-    return {
-      title: calYear + ' 年 第 ' + (calQ + 1) + ' 季',
-      start: fmt(new Date(calYear, calQ * 3, 1)),
-      end: fmt(new Date(calYear, calQ * 3 + 3, 0)),
-      hasPrev: true, hasNext: true
-    };
+  // 行事曆：季度照月份分（1–3、4–6、7–9、10–12 月）
+  var calYear, calQ;
+  function focusCal() {
+    var p = date.split('-');
+    calYear = +p[0]; calQ = Math.floor((+p[1] - 1) / 3);
   }
   function renderCal() {
-    var r = calRange();
-    $('calTitle').textContent = r.title;
-    $('calPrev').disabled = !r.hasPrev;
-    $('calNext').disabled = !r.hasNext;
-    var body = $('calBody'); body.innerHTML = '';
-    var t = today(), totalPlay = 0, totalOff = 0;
-    var sp = r.start.split('-'), ep = r.end.split('-');
-    var y = +sp[0], m = +sp[1] - 1, lastY = +ep[0], lastM = +ep[1] - 1;
-    while (y < lastY || (y === lastY && m <= lastM)) {
-      var box = document.createElement('div'); box.className = 'month';
-      var h = document.createElement('h3'); h.textContent = (y !== +sp[0] || y !== lastY ? y + ' 年 ' : '') + (m + 1) + ' 月';
-      var played = 0;
-      var grid = document.createElement('div'); grid.className = 'cal';
-      WEEKDAYS.split('').forEach(function (w) {
-        var c = document.createElement('div'); c.className = 'wd'; c.textContent = w; grid.appendChild(c);
-      });
-      var first = new Date(y, m, 1).getDay();
-      var days = new Date(y, m + 1, 0).getDate();
-      for (var i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
+    var start = fmt(new Date(calYear, calQ * 3, 1)), end = fmt(new Date(calYear, calQ * 3 + 3, 0));
+    $('calTitle').textContent = calYear + ' 第' + '一二三四'[calQ] + '季';
+    $('calPrev').disabled = start <= START_DATE;
+    $('calBody').innerHTML = '';
+    renderSheet(calYear, calQ * 3);
+  }
+
+  // 明細表：每列一個月，列出這個月的打球日與出席人數
+  function renderSheet(y, m0) {
+    var rows = [], maxCols = 0, t = today();
+    for (var m = m0; m < m0 + 3; m++) {
+      var days = new Date(y, m + 1, 0).getDate(), list = [];
       for (var d = 1; d <= days; d++) {
         var key = y + '-' + pad(m + 1) + '-' + pad(d);
-        var b = document.createElement('button');
-        b.className = 'day' + (key === t ? ' today' : '') + (key === date ? ' selected' : '');
-        b.innerHTML = '<span>' + d + '</span>';
-        var label = (m + 1) + '月' + d + '日';
-        if (key < r.start || key > r.end) {
-          b.classList.add('out');
-        } else if (isOff(key)) {
-          totalOff++;
-          b.classList.add('off');
-          b.innerHTML += '<span class="n">停</span>';
-          label += '，全員請假';
-        } else if (isPlayDay(key)) {
-          played++;
-          b.classList.add('play');
-          var n = attendCount(key), l = leavesOn(key).length;
-          b.innerHTML += '<span class="n">' + n + '人</span>' + (l ? '<span class="l">假' + l + '</span>' : '');
-          label += '，出席 ' + n + ' 人' + (l ? '，請假 ' + l + ' 人' : '');
+        if (isOff(key) && weekdayOf(key) === WEEKLY_DAY) list.push({ key: key, d: d, off: true });
+        else if (isPlayDay(key)) {
+          list.push({ key: key, d: d, n: attendCount(key), l: leavesOn(key).length, sb: subCount(key) });
         }
-        b.setAttribute('aria-label', label);
-        b.onclick = (function (k) { return function () { $('calDialog').close(); setDate(k); }; })(key);
-        grid.appendChild(b);
       }
-      totalPlay += played;
-      if (played) h.textContent += '・打球 ' + played + ' 次';
-      box.appendChild(h); box.appendChild(grid); body.appendChild(box);
-      if (++m > 11) { m = 0; y++; }
+      rows.push({ m: m, list: list });
+      maxCols = Math.max(maxCols, list.length);
     }
-    $('calRange').textContent = r.start + ' ～ ' + r.end + '｜打球 ' + totalPlay + ' 次' + (totalOff ? '・全員請假 ' + totalOff + ' 天' : '');
+    var table = document.createElement('table'); table.className = 'sheet';
+    var tb = document.createElement('tbody');
+    rows.forEach(function (row) {
+      var tr = document.createElement('tr');
+      var th = document.createElement('th'); th.scope = 'row';
+      th.textContent = (row.m + 1) + '月';
+      tr.appendChild(th);
+      for (var i = 0; i < Math.max(maxCols, 1); i++) {
+        var td = document.createElement('td'), c = row.list[i];
+        if (!c) { td.className = 'empty'; tr.appendChild(td); continue; }
+        if (c.off) td.classList.add('off');
+        var hol = HOLIDAYS[c.key];
+        if (c.key < t) td.classList.add('past');
+        if (c.key === date) td.classList.add('sel');
+        var b = document.createElement('button'); b.className = 'cell';
+        b.innerHTML = '<span class="d">' + c.d + '</span>' + (c.off
+          ? '<span class="c">停</span>'
+          : '<span class="c">' + c.n + '人</span>' + (c.l || c.sb ? '<span class="extra">' + (c.l ? '<span class="lv">假' + c.l + '</span>' : '') + (c.sb ? '<span class="sb">補' + c.sb + '</span>' : '') + '</span>' : ''))
+          + (hol ? '<span class="hol">' + hol + '</span>' : '');
+        b.setAttribute('aria-label', (row.m + 1) + '月' + c.d + '日，' + (hol ? hol + '，' : '') + (c.off ? '全員請假' : '出席 ' + c.n + ' 人' + (c.l ? '，請假 ' + c.l + ' 人' : '') + (c.sb ? '，候補 ' + c.sb + ' 人' : '')));
+        b.onclick = (function (k) { return function () { setDate(k); }; })(c.key);
+        td.appendChild(b); tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb); $('calBody').appendChild(table);
   }
+
   function shiftQ(step) {
-    if (state.seasons.length) {
-      calIdx = Math.max(0, Math.min(state.seasons.length - 1, calIdx + step));
-    } else {
-      calQ += step;
-      if (calQ < 0) { calQ = 3; calYear--; }
-      if (calQ > 3) { calQ = 0; calYear++; }
-    }
+    if (step < 0 && $('calPrev').disabled) return;
+    calQ += step;
+    if (calQ < 0) { calQ = 3; calYear--; }
+    if (calQ > 3) { calQ = 0; calYear++; }
     renderCal();
   }
-  $('calBtn').onclick = function () {
-    var list = sortedSeasons();
-    if (list.length) {
-      // 找包含目前日期的季；沒有就找下一個季；再沒有就用最後一季
-      calIdx = list.length - 1;
-      for (var i = 0; i < list.length; i++) {
-        if (date <= list[i].end) { calIdx = i; break; }
-      }
-    } else {
-      var p = date.split('-');
-      calYear = +p[0]; calQ = Math.floor((+p[1] - 1) / 3);
-    }
-    renderCal();
-    $('calDialog').showModal();
-    var sel = $('calBody').querySelector('.day.selected');
-    if (sel) sel.closest('.month').scrollIntoView({ block: 'center' });
-  };
   $('calPrev').onclick = function () { shiftQ(-1); };
   $('calNext').onclick = function () { shiftQ(1); };
-  $('calClose').onclick = $('calX').onclick = function () { $('calDialog').close(); };
-  // 點行事曆外面的灰色區域也能關閉（所有對話框通用）
+  // 點對話框外面的灰色區域也能關閉
   document.querySelectorAll('dialog').forEach(function (dlg) {
     dlg.addEventListener('click', function (e) {
       if (e.target !== dlg) return;
@@ -730,63 +737,12 @@
   };
   $('confirmNo').onclick = function () { onConfirm = null; $('confirmDialog').close(); };
 
-  // 功能一：點數字展開名單
-  document.querySelectorAll('[data-toggle="detail"]').forEach(function (b) {
-    b.onclick = function () { $('detail').classList.toggle('open'); };
-  });
-
-  // 功能二：請假
-  $('leaveBtn').onclick = function () {
-    var sel = $('leaveName'); sel.innerHTML = '';
-    state.members.forEach(function (n) {
-      var o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o);
-    });
-    $('leaveDate').value = date;
-    $('leaveDialog').showModal();
-  };
-  $('leaveCancel').onclick = function () { $('leaveDialog').close(); };
-  $('leaveOk').onclick = function () {
-    var n = $('leaveName').value, d = $('leaveDate').value;
-    if (!n || !d) { toast('請選人和日期'); return; }
-    $('leaveDialog').close();
-    var list = state.leaves[d] = leavesOn(d);
-    if (list.indexOf(n) === -1) list.push(n);
-    save(); render();
-    toast(n + ' 已請假（' + d + '）');
-  };
-
-  // 功能三：候補與否
-  var inviting = null;
-  function openInvite(n) {
-    inviting = n;
-    $('inviteTitle').textContent = n + ' 要候補嗎？';
-    $('inviteDialog').showModal();
-  }
-  function answer(v) {
+  // 功能三：點名字直接加入候補，再點一次取消
+  function toggleSub(n) {
     var inv = state.invites[date] = invitesOn(date);
-    inv[inviting] = v;
+    if (inv[n] === 'yes') { delete inv[n]; toast(n + ' 已從候補移除'); }
+    else { inv[n] = 'yes'; toast(n + ' 加入候補'); }
     save(); render();
-    $('inviteDialog').close();
-  }
-  $('inviteYes').onclick = function () { answer('yes'); };
-  $('inviteNo').onclick = function () { answer('no'); };
-  $('inviteCancel').onclick = function () { $('inviteDialog').close(); };
-
-  // 功能四：複製到剪貼簿
-  function copyText(text) {
-    function fallback() {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch (e) { /* 忽略 */ }
-      document.body.removeChild(ta);
-      toast('已複製：' + text);
-    }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(function () { toast('已複製：' + text); }, fallback);
-    } else {
-      fallback();
-    }
   }
 
   var toastTimer;
@@ -808,6 +764,7 @@
   onSubmit('addMemberForm', addName('newMember', 'members'));
 
   setDate(date);
+  if (restoreScroll) window.scrollTo(0, restoreScroll);
 })();
 </script>
 </body>
