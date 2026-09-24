@@ -62,6 +62,7 @@
   .btn.leave { background: var(--leave); border-color: var(--leave); color: #fff; }
   .btn.small { padding: 4px 10px; font-size: 13px; }
   .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: 0.35; cursor: default; }
 
   input[type="date"], input[type="text"], select {
     font: inherit; color: var(--text); background: var(--surface);
@@ -133,6 +134,22 @@
   .day.selected { border-color: var(--accent); }
   .day .n { font-weight: 700; color: var(--accent); font-size: 13px; }
   .day .l { font-size: 10px; color: var(--leave); }
+  .day.off { background: var(--danger-bg); }
+  .day.off .n { color: var(--danger); }
+  .day.out { opacity: 0.3; }
+  .off-banner {
+    display: none; margin-top: 12px; padding: 14px; border-radius: 12px; text-align: center;
+    background: var(--danger-bg); color: var(--danger); font-weight: 700;
+  }
+  .is-off .off-banner { display: block; }
+  .is-off .stats, .is-off .detail, .is-off .hint, .is-off #leaveBtn { display: none !important; }
+  .list { list-style: none; margin: 12px 0 0; padding: 0; }
+  .list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .list li:first-child { border-top: 0; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .form-grid input { width: 100%; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .settings-h { font-size: 14px; margin: 18px 0 0; }
   dialog h2 { margin-bottom: 12px; }
   dialog label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
   dialog select, dialog input { width: 100%; }
@@ -172,10 +189,14 @@
       <span class="muted" id="weekdayLabel"></span>
       <input type="date" id="playDate">
     </span>
+    <div class="row between" style="width:100%">
+      <span class="muted" id="seasonLabel"></span>
+      <button class="btn small" id="offToggle"></button>
+    </div>
   </div>
 
   <!-- 功能一 + 功能二 -->
-  <div class="card">
+  <div class="card" id="statusCard">
     <div class="row between">
       <h2>出席狀況</h2>
       <button class="btn leave" id="leaveBtn">我要請假</button>
@@ -190,7 +211,8 @@
       <h3>請假</h3>
       <div class="chips" id="leaveList"></div>
     </div>
-    <p class="muted" style="margin:10px 0 0">點上面的數字可以看名單</p>
+    <div class="off-banner">這天全員請假，不打球 🏖️</div>
+    <p class="muted hint" style="margin:10px 0 0">點上面的數字可以看名單</p>
   </div>
 
   <!-- 功能三 + 功能四 -->
@@ -213,6 +235,29 @@
       <div class="chips" id="memberList" style="margin-top:12px"></div>
       <form class="row" id="addMemberForm" style="margin-top:12px">
         <input type="text" id="newMember" placeholder="新增成員" style="flex:1">
+        <button class="btn small" type="submit">新增</button>
+      </form>
+    </details>
+  </div>
+
+  <!-- 季度與全員請假設定 -->
+  <div class="card">
+    <details id="settings">
+      <summary>季度與全員請假日</summary>
+      <h3 class="settings-h">季度</h3>
+      <p class="muted" style="margin:2px 0 0">自訂每一季的起訖日期，季內每週三自動排為打球日。</p>
+      <ul class="list" id="seasonList"></ul>
+      <form class="form-grid" id="addSeasonForm">
+        <input type="text" id="seasonName" class="full" placeholder="季名稱，例如：2026 秋季" required>
+        <label class="muted" style="font-size:13px">開始<input type="date" id="seasonStart" required></label>
+        <label class="muted" style="font-size:13px">結束<input type="date" id="seasonEnd" required></label>
+        <button class="btn small full" type="submit">新增季度</button>
+      </form>
+      <h3 class="settings-h">全員請假日</h3>
+      <p class="muted" style="margin:2px 0 0">例如國定假日、場地不開，這天不打球。</p>
+      <ul class="list" id="offList"></ul>
+      <form class="row" id="addOffForm" style="margin-top:12px">
+        <input type="date" id="offDate" required style="flex:1">
         <button class="btn small" type="submit">新增</button>
       </form>
     </details>
@@ -252,7 +297,8 @@
     <h2 id="calTitle" style="margin:0"></h2>
     <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
   </div>
-  <p class="muted" style="margin:8px 0 0">每週三固定打球。綠色是打球日，數字是出席人數；點日期可切換到那天。</p>
+  <p class="muted" id="calRange" style="margin:6px 0 0; text-align:center"></p>
+  <p class="muted" style="margin:8px 0 0">綠色是打球日（數字是出席人數），紅色是全員請假；點日期可切換到那天。</p>
   <div id="calBody"></div>
   <div class="actions"><button class="btn" id="calClose">關閉</button></div>
 </dialog>
@@ -282,16 +328,42 @@
     pool: ['阿華', '小王', 'Kevin'],
     leaves: {},
     invites: {},
-    playDays: []
+    playDays: [],
+    seasons: [],   // [{ name, start, end }]
+    offDays: []    // 全員請假日
   };
   if (!state.playDays) state.playDays = [];
+  if (!state.seasons) state.seasons = [];
+  if (!state.offDays) state.offDays = [];
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(dt) { return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()); }
+  function sortedSeasons() {
+    return state.seasons.slice().sort(function (a, b) { return a.start < b.start ? -1 : 1; });
+  }
+  function seasonOf(d) {
+    for (var i = 0; i < state.seasons.length; i++) {
+      var x = state.seasons[i];
+      if (d >= x.start && d <= x.end) return x;
+    }
+    return null;
+  }
+  function inSeason(d) { return !state.seasons.length || !!seasonOf(d); }
+  function isOff(d) { return state.offDays.indexOf(d) !== -1; }
 
   function weekdayOf(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).getDay(); }
   // 下一個固定球日（今天剛好是就用今天）
   function nextPlayDay() {
     var d = new Date();
     d.setDate(d.getDate() + (WEEKLY_DAY - d.getDay() + 7) % 7);
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    var first = fmt(d);
+    // 跳過全員請假日與季外日期
+    for (var i = 0; i < 60; i++) {
+      var k = fmt(d);
+      if (inSeason(k) && !isOff(k)) return k;
+      d.setDate(d.getDate() + 7);
+    }
+    return first;
   }
   var date = nextPlayDay();
 
@@ -328,6 +400,13 @@
   }
 
   function render() {
+    var off = isOff(date);
+    $('statusCard').classList.toggle('is-off', off);
+    $('offToggle').textContent = off ? '取消全員請假' : '設為全員請假';
+    var ss = seasonOf(date);
+    $('seasonLabel').textContent = ss ? ss.name : (state.seasons.length ? '不在任何季度內' : '');
+    renderSettings();
+
     var leaves = leavesOn(date);
     var invites = invitesOn(date);
     var attend = state.members.filter(function (m) { return leaves.indexOf(m) === -1; });
@@ -407,6 +486,65 @@
     });
   }
 
+  function renderSettings() {
+    var sl = $('seasonList'); sl.innerHTML = '';
+    sortedSeasons().forEach(function (x) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span><strong></strong><br><span class="muted"></span></span>';
+      li.querySelector('strong').textContent = x.name;
+      li.querySelector('.muted').textContent = x.start + ' ～ ' + x.end;
+      var del = document.createElement('button');
+      del.className = 'btn small ghost'; del.textContent = '×';
+      del.setAttribute('aria-label', '刪除 ' + x.name);
+      del.onclick = function () {
+        if (!confirm('要刪除「' + x.name + '」嗎？')) return;
+        state.seasons = state.seasons.filter(function (y) { return y !== x; });
+        save(); render();
+      };
+      li.appendChild(del); sl.appendChild(li);
+    });
+    if (!state.seasons.length) sl.innerHTML = '<li class="muted">還沒設定，行事曆會先用一般季度（1–3 月…）</li>';
+
+    var ol = $('offList'); ol.innerHTML = '';
+    state.offDays.slice().sort().forEach(function (d) {
+      var li = document.createElement('li');
+      var t = document.createElement('span');
+      t.textContent = d + '（週' + WEEKDAYS[weekdayOf(d)] + '）';
+      var del = document.createElement('button');
+      del.className = 'btn small ghost'; del.textContent = '×';
+      del.setAttribute('aria-label', '取消 ' + d + ' 全員請假');
+      del.onclick = function () { toggleOff(d); };
+      li.appendChild(t); li.appendChild(del); ol.appendChild(li);
+    });
+    if (!state.offDays.length) ol.innerHTML = '<li class="muted">目前沒有</li>';
+  }
+
+  function toggleOff(d) {
+    if (isOff(d)) state.offDays = state.offDays.filter(function (x) { return x !== d; });
+    else state.offDays.push(d);
+    save(); render();
+  }
+  $('offToggle').onclick = function () {
+    toggleOff(date);
+    toast(isOff(date) ? date + ' 設為全員請假' : date + ' 恢復打球');
+  };
+  $('addOffForm').onsubmit = function (e) {
+    e.preventDefault();
+    var d = $('offDate').value;
+    if (d && !isOff(d)) toggleOff(d);
+    $('offDate').value = '';
+  };
+  $('addSeasonForm').onsubmit = function (e) {
+    e.preventDefault();
+    var n = $('seasonName').value.trim(), a = $('seasonStart').value, b = $('seasonEnd').value;
+    if (!n || !a || !b) return;
+    if (a > b) { toast('結束日期要在開始日期之後'); return; }
+    state.seasons.push({ name: n, start: a, end: b });
+    save(); render();
+    this.reset();
+    toast('已新增 ' + n);
+  };
+
   // 日期
   $('playDate').value = date;
   $('playDate').onchange = function () { setDate(this.value || today()); };
@@ -424,34 +562,59 @@
       Object.keys(inv).filter(function (n) { return inv[n] === 'yes'; }).length;
   }
   function isPlayDay(d) {
-    return weekdayOf(d) === WEEKLY_DAY || state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
+    if (isOff(d)) return false;
+    return (weekdayOf(d) === WEEKLY_DAY && inSeason(d)) || state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
   }
 
-  // 行事曆：顯示一季（三個月）
-  var calYear, calQ;
-  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  // 行事曆：有自訂季度就依季度顯示，否則用一般季度（三個月）
+  var calIdx, calYear, calQ;
+  function calRange() {
+    var list = sortedSeasons();
+    if (list.length) {
+      var x = list[calIdx];
+      return { title: x.name, start: x.start, end: x.end, hasPrev: calIdx > 0, hasNext: calIdx < list.length - 1 };
+    }
+    return {
+      title: calYear + ' 年 第 ' + (calQ + 1) + ' 季',
+      start: fmt(new Date(calYear, calQ * 3, 1)),
+      end: fmt(new Date(calYear, calQ * 3 + 3, 0)),
+      hasPrev: true, hasNext: true
+    };
+  }
   function renderCal() {
-    $('calTitle').textContent = calYear + ' 年 第 ' + (calQ + 1) + ' 季';
+    var r = calRange();
+    $('calTitle').textContent = r.title;
+    $('calPrev').disabled = !r.hasPrev;
+    $('calNext').disabled = !r.hasNext;
     var body = $('calBody'); body.innerHTML = '';
-    var t = today();
-    for (var m = calQ * 3; m < calQ * 3 + 3; m++) {
+    var t = today(), totalPlay = 0, totalOff = 0;
+    var sp = r.start.split('-'), ep = r.end.split('-');
+    var y = +sp[0], m = +sp[1] - 1, lastY = +ep[0], lastM = +ep[1] - 1;
+    while (y < lastY || (y === lastY && m <= lastM)) {
       var box = document.createElement('div'); box.className = 'month';
-      var h = document.createElement('h3'); h.textContent = (m + 1) + ' 月';
+      var h = document.createElement('h3'); h.textContent = (y !== +sp[0] || y !== lastY ? y + ' 年 ' : '') + (m + 1) + ' 月';
       var played = 0;
       var grid = document.createElement('div'); grid.className = 'cal';
       WEEKDAYS.split('').forEach(function (w) {
         var c = document.createElement('div'); c.className = 'wd'; c.textContent = w; grid.appendChild(c);
       });
-      var first = new Date(calYear, m, 1).getDay();
-      var days = new Date(calYear, m + 1, 0).getDate();
+      var first = new Date(y, m, 1).getDay();
+      var days = new Date(y, m + 1, 0).getDate();
       for (var i = 0; i < first; i++) grid.appendChild(document.createElement('div'));
       for (var d = 1; d <= days; d++) {
-        var key = calYear + '-' + pad(m + 1) + '-' + pad(d);
+        var key = y + '-' + pad(m + 1) + '-' + pad(d);
         var b = document.createElement('button');
         b.className = 'day' + (key === t ? ' today' : '') + (key === date ? ' selected' : '');
         b.innerHTML = '<span>' + d + '</span>';
         var label = (m + 1) + '月' + d + '日';
-        if (isPlayDay(key)) {
+        if (key < r.start || key > r.end) {
+          b.classList.add('out');
+        } else if (isOff(key)) {
+          totalOff++;
+          b.classList.add('off');
+          b.innerHTML += '<span class="n">停</span>';
+          label += '，全員請假';
+        } else if (isPlayDay(key)) {
           played++;
           b.classList.add('play');
           var n = attendCount(key), l = leavesOn(key).length;
@@ -462,19 +625,35 @@
         b.onclick = (function (k) { return function () { $('calDialog').close(); setDate(k); }; })(key);
         grid.appendChild(b);
       }
+      totalPlay += played;
       if (played) h.textContent += '・打球 ' + played + ' 次';
       box.appendChild(h); box.appendChild(grid); body.appendChild(box);
+      if (++m > 11) { m = 0; y++; }
     }
+    $('calRange').textContent = r.start + ' ～ ' + r.end + '｜打球 ' + totalPlay + ' 次' + (totalOff ? '・全員請假 ' + totalOff + ' 天' : '');
   }
   function shiftQ(step) {
-    calQ += step;
-    if (calQ < 0) { calQ = 3; calYear--; }
-    if (calQ > 3) { calQ = 0; calYear++; }
+    if (state.seasons.length) {
+      calIdx = Math.max(0, Math.min(state.seasons.length - 1, calIdx + step));
+    } else {
+      calQ += step;
+      if (calQ < 0) { calQ = 3; calYear--; }
+      if (calQ > 3) { calQ = 0; calYear++; }
+    }
     renderCal();
   }
   $('calBtn').onclick = function () {
-    var p = date.split('-');
-    calYear = +p[0]; calQ = Math.floor((+p[1] - 1) / 3);
+    var list = sortedSeasons();
+    if (list.length) {
+      // 找包含目前日期的季；沒有就找下一個季；再沒有就用最後一季
+      calIdx = list.length - 1;
+      for (var i = 0; i < list.length; i++) {
+        if (date <= list[i].end) { calIdx = i; break; }
+      }
+    } else {
+      var p = date.split('-');
+      calYear = +p[0]; calQ = Math.floor((+p[1] - 1) / 3);
+    }
     renderCal();
     $('calDialog').showModal();
     var sel = $('calBody').querySelector('.day.selected');
