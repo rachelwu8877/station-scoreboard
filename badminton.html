@@ -89,7 +89,12 @@
   }
   .chip.attend { background: var(--ok-bg); border-color: transparent; }
   .chip.leave { background: var(--leave-bg); border-color: transparent; }
-  .chip .x { border: 0; background: none; color: var(--muted); padding: 0 0 0 2px; font-size: 15px; line-height: 1; }
+  .chip:has(.x) { padding-right: 2px; }
+  .chip .x {
+    border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1;
+    width: 30px; height: 30px; margin: -6px 0; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  }
+  .chip .x:hover, .chip .x:active { background: rgba(0, 0, 0, 0.08); color: var(--text); }
   .tag { font-size: 12px; color: var(--muted); }
 
   /* 功能三：可約的人 */
@@ -428,9 +433,19 @@
     $('leaveCount').textContent = leaves.length;
 
     var al = $('attendList'); al.innerHTML = '';
-    attend.forEach(function (n) { al.appendChild(chip(n, 'attend')); });
+    attend.forEach(function (n) {
+      al.appendChild(chip(n, 'attend', function () {
+        var list = state.leaves[date] = leavesOn(date);
+        if (list.indexOf(n) === -1) list.push(n);
+        save(); render();
+        toast(n + ' 改為請假');
+      }));
+    });
     extras.forEach(function (n) {
-      al.appendChild(chip(n, 'attend', function () { delete invites[n]; save(); render(); }, '候補'));
+      al.appendChild(chip(n, 'attend', function () {
+        delete invites[n]; save(); render();
+        toast(n + ' 已從出席移除');
+      }, '候補'));
     });
     if (!al.children.length) al.innerHTML = '<span class="muted">沒有人</span>';
 
