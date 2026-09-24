@@ -505,7 +505,8 @@
     mode = 'api';
     setStatus('讀取中…');
     apiLoad(true);
-    setInterval(apiLoad, 20000);
+    // 每 5 秒抓一次最新資料；網頁在背景時暫停
+    setInterval(function () { if (!document.hidden) apiLoad(); }, 5000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) apiLoad(); });
   }
   var ready = API_URL ? Promise.resolve(false)
