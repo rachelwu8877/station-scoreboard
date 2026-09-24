@@ -168,7 +168,10 @@
   <!-- 日期 -->
   <div class="card row between">
     <label class="row" for="playDate"><strong>打球日</strong></label>
-    <input type="date" id="playDate">
+    <span class="row" style="gap:8px">
+      <span class="muted" id="weekdayLabel"></span>
+      <input type="date" id="playDate">
+    </span>
   </div>
 
   <!-- 功能一 + 功能二 -->
@@ -249,7 +252,7 @@
     <h2 id="calTitle" style="margin:0"></h2>
     <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
   </div>
-  <p class="muted" style="margin:8px 0 0">綠色是打球日，數字是出席人數；點日期可切換到那天。</p>
+  <p class="muted" style="margin:8px 0 0">每週三固定打球。綠色是打球日，數字是出席人數；點日期可切換到那天。</p>
   <div id="calBody"></div>
   <div class="actions"><button class="btn" id="calClose">關閉</button></div>
 </dialog>
@@ -259,6 +262,8 @@
 <script>
 (function () {
   var STORAGE_KEY = 'badminton-board-v1';
+  var WEEKLY_DAY = 3; // 固定每週三打球（0=日 … 6=六）
+  var WEEKDAYS = '日一二三四五六';
   var $ = function (id) { return document.getElementById(id); };
 
   function today() {
@@ -280,7 +285,15 @@
     playDays: []
   };
   if (!state.playDays) state.playDays = [];
-  var date = today();
+
+  function weekdayOf(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).getDay(); }
+  // 下一個固定球日（今天剛好是就用今天）
+  function nextPlayDay() {
+    var d = new Date();
+    d.setDate(d.getDate() + (WEEKLY_DAY - d.getDay() + 7) % 7);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  var date = nextPlayDay();
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
@@ -400,7 +413,8 @@
   function setDate(d) {
     date = d;
     $('playDate').value = d;
-    if (state.playDays.indexOf(d) === -1) { state.playDays.push(d); save(); }
+    $('weekdayLabel').textContent = '週' + WEEKDAYS[weekdayOf(d)];
+    if (weekdayOf(d) !== WEEKLY_DAY && state.playDays.indexOf(d) === -1) { state.playDays.push(d); save(); }
     render();
   }
 
@@ -410,7 +424,7 @@
       Object.keys(inv).filter(function (n) { return inv[n] === 'yes'; }).length;
   }
   function isPlayDay(d) {
-    return state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
+    return weekdayOf(d) === WEEKLY_DAY || state.playDays.indexOf(d) !== -1 || leavesOn(d).length > 0 || Object.keys(invitesOn(d)).length > 0;
   }
 
   // 行事曆：顯示一季（三個月）
@@ -425,7 +439,7 @@
       var h = document.createElement('h3'); h.textContent = (m + 1) + ' 月';
       var played = 0;
       var grid = document.createElement('div'); grid.className = 'cal';
-      '日一二三四五六'.split('').forEach(function (w) {
+      WEEKDAYS.split('').forEach(function (w) {
         var c = document.createElement('div'); c.className = 'wd'; c.textContent = w; grid.appendChild(c);
       });
       var first = new Date(calYear, m, 1).getDay();
