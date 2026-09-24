@@ -235,10 +235,10 @@
       <span class="muted">點名字詢問是否候補</span>
     </div>
     <ul class="people" id="people"></ul>
-    <form class="row" id="addPersonForm" style="margin-top:12px">
+    <div class="row" id="addPersonForm" style="margin-top:12px">
       <input type="text" id="newPerson" placeholder="新增可約的人" style="flex:1">
-      <button class="btn small" type="submit">新增</button>
-    </form>
+      <button class="btn small" type="button" data-submit>新增</button>
+    </div>
   </div>
 
   <!-- 固定成員設定 -->
@@ -246,10 +246,10 @@
     <details>
       <summary>固定成員（預設都出席）</summary>
       <div class="chips" id="memberList" style="margin-top:12px"></div>
-      <form class="row" id="addMemberForm" style="margin-top:12px">
+      <div class="row" id="addMemberForm" style="margin-top:12px">
         <input type="text" id="newMember" placeholder="新增成員" style="flex:1">
-        <button class="btn small" type="submit">新增</button>
-      </form>
+        <button class="btn small" type="button" data-submit>新增</button>
+      </div>
     </details>
   </div>
 
@@ -260,36 +260,36 @@
       <h3 class="settings-h">季度</h3>
       <p class="muted" style="margin:2px 0 0">自訂每一季的起訖日期，季內每週三自動排為打球日。</p>
       <ul class="list" id="seasonList"></ul>
-      <form class="form-grid" id="addSeasonForm">
+      <div class="form-grid" id="addSeasonForm">
         <input type="text" id="seasonName" class="full" placeholder="季名稱，例如：2026 秋季" required>
         <label class="muted" style="font-size:13px">開始<input type="date" id="seasonStart" required></label>
         <label class="muted" style="font-size:13px">結束<input type="date" id="seasonEnd" required></label>
-        <button class="btn small full" type="submit">新增季度</button>
-      </form>
+        <button class="btn small full" type="button" data-submit>新增季度</button>
+      </div>
       <h3 class="settings-h">全員請假日</h3>
       <p class="muted" style="margin:2px 0 0">例如國定假日、場地不開，這天不打球。</p>
       <ul class="list" id="offList"></ul>
-      <form class="row" id="addOffForm" style="margin-top:12px">
+      <div class="row" id="addOffForm" style="margin-top:12px">
         <input type="date" id="offDate" required style="flex:1">
-        <button class="btn small" type="submit">新增</button>
-      </form>
+        <button class="btn small" type="button" data-submit>新增</button>
+      </div>
     </details>
   </div>
 </div>
 
 <!-- 請假對話框 -->
 <dialog id="leaveDialog">
-  <form method="dialog" id="leaveForm">
+  <div id="leaveForm">
     <h2>請假</h2>
     <label for="leaveName">誰要請假</label>
     <select id="leaveName" required></select>
     <label for="leaveDate">日期</label>
     <input type="date" id="leaveDate" required>
     <div class="actions">
-      <button class="btn ghost" value="cancel" formnovalidate>取消</button>
-      <button class="btn leave" value="ok">確定請假</button>
+      <button class="btn ghost" type="button" id="leaveCancel">取消</button>
+      <button class="btn leave" type="button" id="leaveOk">確定請假</button>
     </div>
-  </form>
+  </div>
 </dialog>
 
 <!-- 候補對話框 -->
@@ -300,6 +300,15 @@
     <button class="btn ghost" id="inviteCancel">取消</button>
     <button class="btn" id="inviteNo">否</button>
     <button class="btn primary" id="inviteYes">是</button>
+  </div>
+</dialog>
+
+<!-- 確認對話框（不用瀏覽器的 confirm，因為內嵌頁面常會被擋掉） -->
+<dialog id="confirmDialog">
+  <h2 id="confirmText"></h2>
+  <div class="actions">
+    <button class="btn ghost" id="confirmNo">取消</button>
+    <button class="btn leave" id="confirmYes">確定刪除</button>
   </div>
 </dialog>
 
@@ -488,9 +497,10 @@
       del.setAttribute('aria-label', '刪除 ' + n);
       del.textContent = '×';
       del.onclick = function () {
-        if (!confirm('要從名單移除「' + n + '」嗎？')) return;
-        state.pool = state.pool.filter(function (x) { return x !== n; });
-        save(); render();
+        askConfirm('要從名單移除「' + n + '」嗎？', function () {
+          state.pool = state.pool.filter(function (x) { return x !== n; });
+          save(); render();
+        });
       };
       right.appendChild(copy);
       right.appendChild(del);
@@ -505,9 +515,10 @@
     var ml = $('memberList'); ml.innerHTML = '';
     state.members.forEach(function (n) {
       ml.appendChild(chip(n, '', function () {
-        if (!confirm('要移除成員「' + n + '」嗎？')) return;
-        state.members = state.members.filter(function (x) { return x !== n; });
-        save(); render();
+        askConfirm('要移除成員「' + n + '」嗎？', function () {
+          state.members = state.members.filter(function (x) { return x !== n; });
+          save(); render();
+        });
       }));
     });
   }
@@ -523,9 +534,10 @@
       del.className = 'btn small ghost'; del.textContent = '×';
       del.setAttribute('aria-label', '刪除 ' + x.name);
       del.onclick = function () {
-        if (!confirm('要刪除「' + x.name + '」嗎？')) return;
-        state.seasons = state.seasons.filter(function (y) { return y !== x; });
-        save(); render();
+        askConfirm('要刪除「' + x.name + '」嗎？', function () {
+          state.seasons = state.seasons.filter(function (y) { return y !== x; });
+          save(); render();
+        });
       };
       li.appendChild(del); sl.appendChild(li);
     });
@@ -554,22 +566,30 @@
     toggleOff(date);
     toast(isOff(date) ? date + ' 設為全員請假' : date + ' 恢復打球');
   };
-  $('addOffForm').onsubmit = function (e) {
-    e.preventDefault();
+  // 不用 <form> 送出（內嵌頁面常會擋掉），改成按鈕點擊或按 Enter
+  function onSubmit(id, fn) {
+    var box = $(id);
+    box.querySelector('[data-submit]').onclick = fn;
+    box.querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); fn(); } });
+    });
+  }
+  onSubmit('addOffForm', function () {
     var d = $('offDate').value;
-    if (d && !isOff(d)) toggleOff(d);
+    if (!d) { toast('請先選日期'); return; }
+    if (!isOff(d)) toggleOff(d);
     $('offDate').value = '';
-  };
-  $('addSeasonForm').onsubmit = function (e) {
-    e.preventDefault();
+    toast(d + ' 設為全員請假');
+  });
+  onSubmit('addSeasonForm', function () {
     var n = $('seasonName').value.trim(), a = $('seasonStart').value, b = $('seasonEnd').value;
-    if (!n || !a || !b) return;
+    if (!n || !a || !b) { toast('請填季名稱、開始和結束日期'); return; }
     if (a > b) { toast('結束日期要在開始日期之後'); return; }
     state.seasons.push({ name: n, start: a, end: b });
     save(); render();
-    this.reset();
+    $('seasonName').value = $('seasonStart').value = $('seasonEnd').value = '';
     toast('已新增 ' + n);
-  };
+  });
 
   // 日期
   $('playDate').value = date;
@@ -697,6 +717,19 @@
     });
   });
 
+  var onConfirm = null;
+  function askConfirm(msg, cb) {
+    onConfirm = cb;
+    $('confirmText').textContent = msg;
+    $('confirmDialog').showModal();
+  }
+  $('confirmYes').onclick = function () {
+    $('confirmDialog').close();
+    if (onConfirm) onConfirm();
+    onConfirm = null;
+  };
+  $('confirmNo').onclick = function () { onConfirm = null; $('confirmDialog').close(); };
+
   // 功能一：點數字展開名單
   document.querySelectorAll('[data-toggle="detail"]').forEach(function (b) {
     b.onclick = function () { $('detail').classList.toggle('open'); };
@@ -711,15 +744,16 @@
     $('leaveDate').value = date;
     $('leaveDialog').showModal();
   };
-  $('leaveDialog').addEventListener('close', function () {
-    if (this.returnValue !== 'ok') return;
+  $('leaveCancel').onclick = function () { $('leaveDialog').close(); };
+  $('leaveOk').onclick = function () {
     var n = $('leaveName').value, d = $('leaveDate').value;
-    if (!n || !d) return;
+    if (!n || !d) { toast('請選人和日期'); return; }
+    $('leaveDialog').close();
     var list = state.leaves[d] = leavesOn(d);
     if (list.indexOf(n) === -1) list.push(n);
     save(); render();
     toast(n + ' 已請假（' + d + '）');
-  });
+  };
 
   // 功能三：候補與否
   var inviting = null;
@@ -764,15 +798,14 @@
 
   // 新增名字
   function addName(inputId, listKey) {
-    return function (e) {
-      e.preventDefault();
+    return function () {
       var v = $(inputId).value.trim();
       if (v && state[listKey].indexOf(v) === -1) { state[listKey].push(v); save(); render(); }
       $(inputId).value = '';
     };
   }
-  $('addPersonForm').onsubmit = addName('newPerson', 'pool');
-  $('addMemberForm').onsubmit = addName('newMember', 'members');
+  onSubmit('addPersonForm', addName('newPerson', 'pool'));
+  onSubmit('addMemberForm', addName('newMember', 'members'));
 
   setDate(date);
 })();
