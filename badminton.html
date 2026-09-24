@@ -1,0 +1,667 @@
+<title>週三羽球點名</title>
+<meta name="description" content="固定每週三的羽球出勤表：誰會來、還缺幾人、缺人時可以找誰。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+  :root {
+    --bg: #edf2ef;
+    --surface: #ffffff;
+    --surface-2: #e2eae5;
+    --text: #13221c;
+    --muted: #5a6b63;
+    --border: #d2ddd7;
+    --court: #1d6b52;
+    --court-deep: #154f3d;
+    --line: #f4f7f5;
+    --on-court: #ffffff;
+    --shuttle: #e2b93b;
+    --ok: #237a4f;
+    --ok-bg: #dcefe3;
+    --warn: #a86a0c;
+    --warn-bg: #f7ebd2;
+    --bad: #b3432d;
+    --bad-bg: #f6e1dc;
+    --focus: #2b7fd6;
+    --shadow: 0 1px 2px rgba(19, 34, 28, .06), 0 6px 18px rgba(19, 34, 28, .07);
+    --num: "Barlow Condensed", "Noto Sans TC", system-ui, sans-serif;
+    --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1613;
+      --surface: #16201c;
+      --surface-2: #1d2a24;
+      --text: #e6efea;
+      --muted: #93a79d;
+      --border: #2a3a33;
+      --court: #1f6a51;
+      --court-deep: #174e3c;
+      --line: #e9f1ed;
+      --on-court: #ffffff;
+      --shuttle: #e8c65a;
+      --ok: #5fcb92;
+      --ok-bg: #173628;
+      --warn: #e5ac4b;
+      --warn-bg: #3a2c12;
+      --bad: #ec8a74;
+      --bad-bg: #3b1f19;
+      --focus: #6aaef0;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1613;
+    --surface: #16201c;
+    --surface-2: #1d2a24;
+    --text: #e6efea;
+    --muted: #93a79d;
+    --border: #2a3a33;
+    --court: #1f6a51;
+    --court-deep: #174e3c;
+    --line: #e9f1ed;
+    --on-court: #ffffff;
+    --shuttle: #e8c65a;
+    --ok: #5fcb92;
+    --ok-bg: #173628;
+    --warn: #e5ac4b;
+    --warn-bg: #3a2c12;
+    --bad: #ec8a74;
+    --bad-bg: #3b1f19;
+    --focus: #6aaef0;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 56px;
+    display: grid;
+    gap: 20px;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* Header */
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: .02em; text-wrap: balance; }
+  .brand svg { flex: none; }
+  .mode {
+    font-size: 12px; color: var(--muted); padding: 3px 10px; border-radius: 99px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .mode.local { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+
+  /* Court hero */
+  .court {
+    background: var(--court);
+    color: var(--on-court);
+    border-radius: 14px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    display: grid;
+    gap: 16px;
+  }
+  .court::before {
+    content: ""; position: absolute; inset: 10px; border: 2px solid rgba(255,255,255,.28);
+    border-radius: 4px; pointer-events: none;
+  }
+  .court::after {
+    content: ""; position: absolute; top: 10px; bottom: 10px; left: 50%; width: 0;
+    border-left: 2px dashed rgba(255,255,255,.22); pointer-events: none;
+  }
+  .court > * { position: relative; z-index: 1; }
+  .datebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .datebar button {
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); color: var(--on-court);
+    width: 40px; height: 40px; border-radius: 10px; font-size: 18px; line-height: 1;
+  }
+  .datebar button:hover { background: rgba(255,255,255,.2); }
+  .datebar .d { text-align: center; }
+  .datebar .d strong { display: block; font-family: var(--num); font-size: 30px; letter-spacing: .02em; line-height: 1.1; }
+  .datebar .d span { font-size: 13px; opacity: .85; }
+  .today-link {
+    background: none; border: 0; color: var(--on-court); text-decoration: underline; font-size: 12px; opacity: .85; padding: 0;
+  }
+
+  .score { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 8px 22px; text-align: center; }
+  .score .big { font-family: var(--num); font-size: 64px; line-height: .95; font-variant-numeric: tabular-nums; }
+  .score .big small { font-size: 30px; opacity: .7; }
+  .score .lbl { font-size: 12px; letter-spacing: .12em; opacity: .8; }
+  .status-pill {
+    justify-self: center; font-weight: 700; padding: 6px 14px; border-radius: 99px; font-size: 15px;
+    background: var(--line); color: var(--court-deep);
+  }
+  .status-pill.short { background: var(--shuttle); color: #3a2a00; }
+  .slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 520px; justify-self: center; }
+  .slot {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.45);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  }
+  .slot.on { background: var(--line); border: 2px solid var(--line); color: var(--court-deep); }
+  .slot.sub { background: var(--shuttle); border-color: var(--shuttle); color: #3a2a00; }
+  .slot.extra { border-style: solid; border-color: var(--shuttle); }
+  .target-edit { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; }
+  .target-edit button {
+    width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.3);
+    background: rgba(255,255,255,.1); color: var(--on-court);
+  }
+  .target-edit .meta { opacity: .8; }
+
+  /* Panels */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  section.panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    display: grid; gap: 12px;
+  }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .panel-head .count { font-family: var(--num); font-size: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .hint { margin: 0; font-size: 13px; color: var(--muted); }
+
+  ul.people { list-style: none; margin: 0; padding: 0; display: grid; }
+  ul.people li {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding-block: 10px; border-top: 1px solid var(--border);
+  }
+  ul.people li:first-child { border-top: 0; }
+  .who { min-width: 0; }
+  .who .n { font-weight: 700; overflow-wrap: anywhere; }
+  .who .s { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+  li.out .who .n { color: var(--muted); text-decoration: line-through; }
+
+  .seg { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--surface-2); }
+  .seg button { border: 0; background: none; padding: 6px 10px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"].in { background: var(--ok-bg); color: var(--ok); font-weight: 700; }
+  .seg button[aria-pressed="true"].out { background: var(--bad-bg); color: var(--bad); font-weight: 700; }
+  .seg button[aria-pressed="true"].ask { background: var(--warn-bg); color: var(--warn); font-weight: 700; }
+  .seg button[aria-pressed="true"].none { background: var(--surface); color: var(--text); font-weight: 700; }
+
+  .sub-row { flex-direction: column; align-items: stretch !important; }
+  .sub-row .top-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .tag { font-size: 11.5px; padding: 1px 8px; border-radius: 99px; white-space: nowrap; flex: none; }
+  .tag.yes { background: var(--ok-bg); color: var(--ok); }
+  .tag.ask { background: var(--warn-bg); color: var(--warn); }
+  .tag.no  { background: var(--bad-bg); color: var(--bad); }
+  .tag.none { background: var(--surface-2); color: var(--muted); }
+
+  .callout {
+    border-radius: 10px; padding: 12px; background: var(--warn-bg); color: var(--text);
+    display: grid; gap: 8px;
+  }
+  .callout.ok { background: var(--ok-bg); }
+  .callout p { margin: 0; font-size: 14px; }
+  .msg { font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; user-select: all; }
+  .btn {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 9px; padding: 7px 14px; font-size: 14px; font-weight: 500;
+  }
+  .btn.primary { background: var(--court); border-color: var(--court); color: var(--on-court); font-weight: 700; }
+  .btn.danger { color: var(--bad); }
+  .btn:hover { filter: brightness(.97); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .empty { font-size: 14px; color: var(--muted); padding: 10px 0; }
+
+  /* Manage */
+  details.panel > summary { cursor: pointer; font-weight: 700; font-size: 17px; list-style: none; display: flex; justify-content: space-between; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after { content: "展開"; font-size: 13px; font-weight: 500; color: var(--muted); }
+  details[open].panel > summary::after { content: "收起"; }
+  details.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  details.panel[open] > .manage { margin-top: 14px; }
+  .manage { display: grid; gap: 18px; }
+  .manage h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+  form.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+  label.f { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  label.f input, label.f select, textarea {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%; min-width: 0;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .mlist { list-style: none; margin: 0; padding: 0; display: grid; }
+  .mlist li { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding-block: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .mlist li:first-child { border-top: 0; }
+  .mlist .who { flex: 1 1 180px; }
+
+  .notebox { display: grid; gap: 6px; }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 99px; font-size: 14px;
+    box-shadow: var(--shadow); z-index: 10; max-width: calc(100% - 32px); text-align: center;
+  }
+  footer { font-size: 12.5px; color: var(--muted); text-align: center; }
+  @media (prefers-reduced-motion: no-preference) {
+    .slot { transition: background .2s, border-color .2s; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="25" r="5" fill="var(--court)"/>
+        <path d="M11.5 22 L6 5 L26 5 L20.5 22 Z" fill="none" stroke="var(--court)" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M16 5 V22 M11 5 L13.5 22 M21 5 L18.5 22" stroke="var(--court)" stroke-width="1.4" fill="none"/>
+      </svg>
+      <h1>週三羽球點名</h1>
+    </div>
+    <span class="mode" id="mode">連線中…</span>
+  </header>
+
+  <div class="court" aria-live="polite">
+    <div class="datebar">
+      <button type="button" id="prev" aria-label="上一週">‹</button>
+      <div class="d">
+        <strong id="dateBig">—</strong>
+        <span id="dateSub">週三</span>
+      </div>
+      <button type="button" id="next" aria-label="下一週">›</button>
+    </div>
+    <div class="score">
+      <div><div class="big" id="cnt">0<small>/0</small></div><div class="lbl">確定出席 / 需要人數</div></div>
+    </div>
+    <div class="status-pill" id="pill">—</div>
+    <div class="slots" id="slots" aria-hidden="true"></div>
+    <div class="target-edit">
+      <span class="meta">這次需要</span>
+      <button type="button" id="tMinus" aria-label="減少一人">−</button>
+      <strong id="tVal">12</strong>
+      <button type="button" id="tPlus" aria-label="增加一人">+</button>
+      <span class="meta">人</span>
+      <button type="button" class="today-link" id="goNext" hidden>回到最近的週三</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-reg">
+      <div class="panel-head">
+        <h2 id="h-reg">固定班底</h2>
+        <span class="count" id="regCount">0/0</span>
+      </div>
+      <p class="hint">預設大家都會來。這週不能來，按「請假」就好。</p>
+      <ul class="people" id="regList"></ul>
+    </section>
+
+    <section class="panel" aria-labelledby="h-sub">
+      <div class="panel-head">
+        <h2 id="h-sub">缺人時可以找誰</h2>
+        <span class="count" id="subCount">0 位候補</span>
+      </div>
+      <div id="callout"></div>
+      <ul class="people" id="subList"></ul>
+    </section>
+  </div>
+
+  <section class="panel notebox" aria-labelledby="h-note">
+    <div class="panel-head"><h2 id="h-note">這週備註</h2></div>
+    <textarea id="note" placeholder="例如：場地改到 B 館、有人帶新球…"></textarea>
+    <div class="row"><button class="btn" type="button" id="saveNote">儲存備註</button></div>
+  </section>
+
+  <details class="panel" id="manageBox">
+    <summary>管理名單與設定</summary>
+    <div class="manage">
+      <div>
+        <h3>新增成員</h3>
+        <form class="grid" id="addForm">
+          <label class="f">名字<input id="fName" required maxlength="30" placeholder="例如：阿哲"></label>
+          <label class="f">身分
+            <select id="fType">
+              <option value="regular">固定班底</option>
+              <option value="sub">候補（缺人時找）</option>
+            </select>
+          </label>
+          <label class="f">聯絡方式<input id="fContact" maxlength="60" placeholder="LINE ID 或電話"></label>
+          <label class="f">備註<input id="fNote" maxlength="60" placeholder="例如：週三下班較晚"></label>
+          <button class="btn primary" type="submit">新增</button>
+        </form>
+      </div>
+      <div>
+        <h3>目前名單</h3>
+        <ul class="mlist" id="mList"></ul>
+      </div>
+      <div>
+        <h3>固定資訊</h3>
+        <form class="grid" id="cfgForm">
+          <label class="f">平常需要幾人<input id="cTarget" type="number" min="1" max="60"></label>
+          <label class="f">時間<input id="cTime" maxlength="30" placeholder="20:00–22:00"></label>
+          <label class="f">地點<input id="cPlace" maxlength="40" placeholder="例如：XX 國小體育館"></label>
+          <button class="btn" type="submit">儲存設定</button>
+        </form>
+      </div>
+    </div>
+  </details>
+
+  <footer id="foot">打開同一個連結的人，看到的都是同一份名單。</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
+
+  // ---------- dates ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  function upcomingWed() {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + ((3 - d.getDay() + 7) % 7));
+    return ymd(d);
+  }
+  const shift = (s, days) => { const d = parse(s); d.setDate(d.getDate() + days); return ymd(d); };
+
+  // ---------- state ----------
+  const state = {
+    date: upcomingWed(),
+    members: [],
+    session: {},
+    config: { target: 12, time: "", place: "" },
+    ready: false,
+  };
+
+  // ---------- storage adapters ----------
+  function localStore() {
+    const KEY = "badminton-wed-v1";
+    let data = { members: {}, sessions: {}, config: {} };
+    try { data = Object.assign(data, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
+    const subs = { members: new Set(), config: new Set(), session: new Map() };
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} };
+    const emitAll = () => {
+      const list = Object.entries(data.members).map(([id, m]) => ({ id, ...m }));
+      subs.members.forEach((f) => f(list));
+      subs.config.forEach((f) => f(data.config));
+      subs.session.forEach((f, date) => f(data.sessions[date] || {}));
+    };
+    const merge = (a, b) => {
+      for (const k in b) {
+        if (b[k] && typeof b[k] === "object" && !Array.isArray(b[k])) a[k] = merge(a[k] && typeof a[k] === "object" ? a[k] : {}, b[k]);
+        else a[k] = b[k];
+      }
+      return a;
+    };
+    return {
+      mode: "local",
+      onMembers(f) { subs.members.add(f); emitAll(); },
+      onConfig(f) { subs.config.add(f); emitAll(); },
+      onSession(date, f) { subs.session.clear(); subs.session.set(date, f); f(data.sessions[date] || {}); return () => subs.session.delete(date); },
+      async addMember(m) { data.members["m" + Date.now().toString(36)] = m; save(); emitAll(); },
+      async updateMember(id, patch) { Object.assign(data.members[id], patch); save(); emitAll(); },
+      async deleteMember(id) { delete data.members[id]; save(); emitAll(); },
+      async patchSession(date, patch) { data.sessions[date] = merge(data.sessions[date] || {}, patch); save(); emitAll(); },
+      async setConfig(c) { data.config = c; save(); emitAll(); },
+    };
+  }
+
+  function cloudStore(db) {
+    const sessionExists = new Map();
+    return {
+      mode: "cloud",
+      onMembers(f) {
+        db.collection("members").onSnapshot(
+          (snap) => f(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          () => toast("名單同步中斷，請重新整理頁面")
+        );
+      },
+      onConfig(f) {
+        db.doc("config/main").onSnapshot((s) => f(s.exists ? s.data() : {}), () => {});
+      },
+      onSession(date, f) {
+        return db.doc("sessions/" + date).onSnapshot((s) => {
+          sessionExists.set(date, s.exists);
+          f(s.exists ? s.data() : {});
+        }, () => toast("出席資料同步中斷，請重新整理頁面"));
+      },
+      addMember: (m) => db.collection("members").add(m),
+      updateMember: (id, patch) => db.doc("members/" + id).update(patch),
+      deleteMember: (id) => db.doc("members/" + id).delete(),
+      async patchSession(date, patch) {
+        const ref = db.doc("sessions/" + date);
+        if (sessionExists.get(date)) return ref.update(patch);
+        const cur = await ref.get();
+        if (cur.exists) { sessionExists.set(date, true); return ref.update(patch); }
+        return ref.set(patch);
+      },
+      setConfig: (c) => db.doc("config/main").set(c),
+    };
+  }
+
+  let store = null;
+  let unSession = null;
+
+  async function write(fn, okMsg) {
+    try { await fn(); if (okMsg) toast(okMsg); }
+    catch (e) {
+      const code = e && e.code;
+      toast(code === "invalid_argument" ? "你目前只有檢視權限，無法修改" : code === "quota_exceeded" ? "資料已達上限，請刪除一些舊資料" : "儲存失敗，請再試一次");
+    }
+  }
+
+  // ---------- derived ----------
+  const target = () => Number(state.session.target) || Number(state.config.target) || 12;
+  const regulars = () => state.members.filter((m) => m.type !== "sub").sort(byOrder);
+  const substitutes = () => state.members.filter((m) => m.type === "sub");
+  function byOrder(a, b) { return (a.createdAt || 0) - (b.createdAt || 0) || String(a.name).localeCompare(String(b.name), "zh-Hant"); }
+  const attend = (id) => (state.session.attend || {})[id] === "out" ? "out" : "in";
+  const subState = (id) => (state.session.subs || {})[id] || "none";
+
+  // ---------- render ----------
+  function render() {
+    const d = parse(state.date);
+    $("dateBig").textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    const diff = Math.round((d - parse(upcomingWed())) / 86400000 / 7);
+    const rel = diff === 0 ? "最近這次" : diff === -1 ? "上週" : diff === 1 ? "下週" : diff < 0 ? `${-diff} 週前` : `${diff} 週後`;
+    const place = [state.config.time, state.config.place].filter(Boolean).join(" · ");
+    $("dateSub").textContent = `週${WEEK[d.getDay()]} · ${rel}${place ? " · " + place : ""}`;
+    $("goNext").hidden = diff === 0;
+
+    const regs = regulars();
+    const regIn = regs.filter((m) => attend(m.id) === "in");
+    const subsAll = substitutes();
+    const subIn = subsAll.filter((m) => subState(m.id) === "yes");
+    const total = regIn.length + subIn.length;
+    const t = target();
+    const short = t - total;
+
+    $("cnt").innerHTML = `${total}<small>/${t}</small>`;
+    $("tVal").textContent = t;
+    const pill = $("pill");
+    pill.className = "status-pill" + (short > 0 ? " short" : "");
+    pill.textContent = !state.ready ? "載入中…" : short > 0 ? `還缺 ${short} 人` : short === 0 ? "人數剛好，準備開打" : `多了 ${-short} 人`;
+
+    const slots = [];
+    const n = Math.max(t, total);
+    for (let i = 0; i < n; i++) {
+      let cls = "slot";
+      if (i < regIn.length) cls += " on";
+      else if (i < total) cls += " sub";
+      if (i >= t) cls += " extra";
+      slots.push(`<span class="${cls}"></span>`);
+    }
+    $("slots").innerHTML = slots.join("");
+
+    // regulars
+    $("regCount").textContent = `${regIn.length}/${regs.length} 會來`;
+    $("regList").innerHTML = regs.length ? regs.map((m) => {
+      const a = attend(m.id);
+      return `<li class="${a}">
+        <div class="who"><div class="n">${esc(m.name)}</div>${m.note ? `<div class="s">${esc(m.note)}</div>` : ""}</div>
+        <div class="seg" role="group" aria-label="${esc(m.name)} 的出席">
+          <button type="button" class="in" aria-pressed="${a === "in"}" data-act="att" data-id="${esc(m.id)}" data-v="in">會來</button>
+          <button type="button" class="out" aria-pressed="${a === "out"}" data-act="att" data-id="${esc(m.id)}" data-v="out">請假</button>
+        </div></li>`;
+    }).join("") : `<li class="empty">還沒有固定班底。打開下方「管理名單與設定」新增。</li>`;
+
+    // substitutes, most useful first
+    const rank = { yes: 0, ask: 1, none: 2, no: 3 };
+    const subs = subsAll.slice().sort((a, b) => rank[subState(a.id)] - rank[subState(b.id)] || byOrder(a, b));
+    $("subCount").textContent = `${subsAll.length} 位候補`;
+    const labels = { none: "還沒問", ask: "問了，等回覆", yes: "會來", no: "這週不行" };
+    $("subList").innerHTML = subs.length ? subs.map((m) => {
+      const s = subState(m.id);
+      const btn = (v, txt, cls) => `<button type="button" class="${cls}" aria-pressed="${s === v}" data-act="sub" data-id="${esc(m.id)}" data-v="${v}">${txt}</button>`;
+      return `<li class="sub-row">
+        <div class="top-line">
+          <div class="who"><div class="n">${esc(m.name)}</div>
+            <div class="s">${[m.contact, m.note].filter(Boolean).map(esc).join(" · ") || "沒有留聯絡方式"}</div></div>
+          <span class="tag ${s}">${labels[s]}</span>
+        </div>
+        <div class="seg" role="group" aria-label="${esc(m.name)} 的聯絡狀態">
+          ${btn("none", "未問", "none")}${btn("ask", "問了", "ask")}${btn("yes", "會來", "in")}${btn("no", "不行", "out")}
+        </div></li>`;
+    }).join("") : `<li class="empty">還沒有候補名單。把偶爾能來的朋友加成「候補」，缺人時就會列在這裡。</li>`;
+
+    // callout
+    const callout = $("callout");
+    if (!state.ready) callout.innerHTML = "";
+    else if (short > 0) {
+      const candidates = subs.filter((m) => ["none", "ask"].includes(subState(m.id)));
+      const msg = invite(short);
+      callout.innerHTML = `<div class="callout">
+        <p><strong>還缺 ${short} 人。</strong>${candidates.length ? `可以先問：${candidates.slice(0, 5).map((m) => esc(m.name)).join("、")}` : subs.length ? "候補都問過了，可能要找新朋友。" : "先新增候補名單吧。"}</p>
+        <div class="msg" id="inviteMsg">${esc(msg)}</div>
+        <div class="row"><button type="button" class="btn" data-act="copy">複製邀請訊息</button></div>
+      </div>`;
+    } else {
+      callout.innerHTML = `<div class="callout ok"><p>這週人數夠了，不用找候補。</p></div>`;
+    }
+
+    // note (don't clobber while typing)
+    const note = $("note");
+    if (document.activeElement !== note) note.value = state.session.note || "";
+
+    // manage list
+    const all = state.members.slice().sort((a, b) => (a.type === b.type ? byOrder(a, b) : a.type === "sub" ? 1 : -1));
+    $("mList").innerHTML = all.length ? all.map((m) => `<li>
+      <div class="who"><div class="n">${esc(m.name)}</div><div class="s">${esc(m.type === "sub" ? "候補" : "固定班底")}${m.contact ? " · " + esc(m.contact) : ""}${m.note ? " · " + esc(m.note) : ""}</div></div>
+      <div class="row">
+        <button type="button" class="btn" data-act="flip" data-id="${esc(m.id)}">改成${m.type === "sub" ? "固定班底" : "候補"}</button>
+        <button type="button" class="btn danger" data-act="del" data-id="${esc(m.id)}">${pendingDelete === m.id ? "確定刪除？" : "刪除"}</button>
+      </div></li>`).join("") : `<li class="empty">名單是空的。</li>`;
+
+    if (document.activeElement?.form !== $("cfgForm")) {
+      $("cTarget").value = state.config.target || 12;
+      $("cTime").value = state.config.time || "";
+      $("cPlace").value = state.config.place || "";
+    }
+  }
+
+  function invite(short) {
+    const d = parse(state.date);
+    const bits = [`${d.getMonth() + 1}/${d.getDate()}（三）`, state.config.time, state.config.place].filter(Boolean).join(" ");
+    return `【羽球】${bits} 還缺 ${short} 人，有空一起來打嗎？可以的話回我一下！`;
+  }
+
+  // ---------- events ----------
+  let pendingDelete = null;
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (!b || !store) return;
+    const { act, id, v } = b.dataset;
+    if (act === "att") write(() => store.patchSession(state.date, { attend: { [id]: v } }));
+    else if (act === "sub") write(() => store.patchSession(state.date, { subs: { [id]: v } }));
+    else if (act === "flip") {
+      const m = state.members.find((x) => x.id === id);
+      if (m) write(() => store.updateMember(id, { type: m.type === "sub" ? "regular" : "sub" }));
+    } else if (act === "del") {
+      if (pendingDelete === id) {
+        pendingDelete = null;
+        write(() => store.deleteMember(id), "已刪除");
+      } else { pendingDelete = id; render(); setTimeout(() => { if (pendingDelete === id) { pendingDelete = null; render(); } }, 4000); }
+    } else if (act === "copy") {
+      const text = invite(target() - currentTotal());
+      navigator.clipboard?.writeText(text).then(() => toast("已複製，可以貼到 LINE"), () => selectMsg()) ?? selectMsg();
+    }
+  });
+  function selectMsg() {
+    const el = $("inviteMsg"); if (!el) return;
+    const r = document.createRange(); r.selectNodeContents(el);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast("已選取訊息，請手動複製");
+  }
+  function currentTotal() {
+    return regulars().filter((m) => attend(m.id) === "in").length + substitutes().filter((m) => subState(m.id) === "yes").length;
+  }
+
+  $("prev").onclick = () => go(shift(state.date, -7));
+  $("next").onclick = () => go(shift(state.date, 7));
+  $("goNext").onclick = () => go(upcomingWed());
+  $("tMinus").onclick = () => store && target() > 1 && write(() => store.patchSession(state.date, { target: target() - 1 }));
+  $("tPlus").onclick = () => store && write(() => store.patchSession(state.date, { target: target() + 1 }));
+  $("saveNote").onclick = () => store && write(() => store.patchSession(state.date, { note: $("note").value.trim() }), "備註已儲存");
+
+  $("addForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = $("fName").value.trim();
+    if (!name || !store) return;
+    const m = { name, type: $("fType").value, contact: $("fContact").value.trim(), note: $("fNote").value.trim(), createdAt: Date.now() };
+    write(() => store.addMember(m), `已新增 ${name}`);
+    $("fName").value = ""; $("fContact").value = ""; $("fNote").value = "";
+    $("fName").focus();
+  });
+  $("cfgForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!store) return;
+    const c = { target: Math.max(1, Math.min(60, Number($("cTarget").value) || 12)), time: $("cTime").value.trim(), place: $("cPlace").value.trim() };
+    write(() => store.setConfig(c), "設定已儲存");
+    document.activeElement?.blur();
+  });
+
+  function go(date) {
+    state.date = date;
+    state.session = {};
+    if (unSession) unSession();
+    unSession = store.onSession(date, (s) => { state.session = s || {}; render(); });
+    render();
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2400);
+  }
+
+  // ---------- boot ----------
+  function start(s) {
+    store = s;
+    const mode = $("mode");
+    if (s.mode === "cloud") { mode.textContent = "即時同步"; mode.className = "mode"; }
+    else {
+      mode.textContent = "只存在這台裝置"; mode.className = "mode local";
+      $("foot").textContent = "目前是單機模式：資料只存在這個瀏覽器，別人看不到你的修改。";
+    }
+    s.onMembers((list) => { state.members = list; state.ready = true; render(); });
+    s.onConfig((c) => { state.config = Object.assign({ target: 12, time: "", place: "" }, c); render(); });
+    go(state.date);
+  }
+
+  render();
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("db").then((db) => start(db ? cloudStore(db) : localStore()), () => start(localStore()));
+  } else {
+    start(localStore());
+  }
+})();
+</script>
