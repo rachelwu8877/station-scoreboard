@@ -461,7 +461,7 @@
     inflight = true;
     // text/plain 才不會被瀏覽器擋（Apps Script 不支援預檢請求）
     fetch(API_URL, { method: 'POST', body: JSON.stringify({ ops: ops }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
-      .then(function (r) { return r.json(); })
+      .then(readJson)
       .then(function (res) {
         inflight = false;
         if (!res.ok) throw new Error(res.error);
@@ -478,15 +478,27 @@
         apiTimer = setTimeout(apiFlush, 5000);
       });
   }
-  // 定時拿最新資料，看到別人的修改
-  function apiLoad(first) {
+  function readJson(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text().then(function (t) {
+      try { return JSON.parse(t); } catch (e) { throw new Error('回應不是資料：' + t.slice(0, 60)); }
+    });
+  }
+  // 定時拿最新資料，看到別人的修改；第一次讀不到會自動重試兩次
+  function apiLoad(first, tries) {
     if (inflight || dirty) return;
-    fetch(API_URL).then(function (r) { return r.json(); }).then(function (res) {
-      if (!res.ok || inflight || dirty) return;
+    fetch(API_URL, { cache: 'no-store' }).then(readJson).then(function (res) {
+      if (!res.ok) throw new Error(res.error || '資料庫回報錯誤');
+      if (inflight || dirty) return;
       server = normalize(res.state);
       state = normalize(server); render();
       if (first) setStatus('');
-    }).catch(function () { if (first) setStatus('連不上共用資料，請稍後重新整理'); });
+    }).catch(function (err) {
+      if (!first) return;
+      tries = tries || 0;
+      if (tries < 2) { setStatus('讀取中…'); setTimeout(function () { apiLoad(true, tries + 1); }, 2000); return; }
+      setStatus('連不上共用資料（' + ((err && err.message) || err) + '），請稍後重新整理');
+    });
   }
 
   if (API_URL) {
