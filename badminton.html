@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羽球點名板</title>
+<style>
+  :root {
+    --bg: #f4f5f2;
+    --surface: #ffffff;
+    --surface-2: #eceee9;
+    --text: #1d2420;
+    --muted: #66706a;
+    --border: #dde1dc;
+    --accent: #2e7d64;
+    --accent-contrast: #ffffff;
+    --leave: #c0692e;
+    --leave-bg: #fbeee4;
+    --danger: #b94a36;
+    --danger-bg: #f7e6e2;
+    --ok-bg: #e2f1ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111513; --surface: #18201c; --surface-2: #202a25; --text: #e8eeea;
+      --muted: #94a39b; --border: #2c3831; --accent: #4fc69d; --accent-contrast: #0b1512;
+      --leave: #e39a63; --leave-bg: #35251a; --danger: #e1786a; --danger-bg: #3a211d; --ok-bg: #1b3329;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111513; --surface: #18201c; --surface-2: #202a25; --text: #e8eeea;
+    --muted: #94a39b; --border: #2c3831; --accent: #4fc69d; --accent-contrast: #0b1512;
+    --leave: #e39a63; --leave-bg: #35251a; --danger: #e1786a; --danger-bg: #3a211d; --ok-bg: #1b3329;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    padding: 24px 16px 64px; line-height: 1.5;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; margin-top: 14px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+
+  .btn {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    border-radius: 10px; padding: 8px 14px; font-weight: 600;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+  .btn.leave { background: var(--leave); border-color: var(--leave); color: #fff; }
+  .btn.small { padding: 4px 10px; font-size: 13px; }
+  .btn.ghost { background: transparent; }
+
+  input[type="date"], input[type="text"], select {
+    font: inherit; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; min-width: 0;
+  }
+
+  /* 功能一：人數總覽 */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+  .stat {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: left;
+    background: var(--surface-2); color: var(--text);
+  }
+  .stat b { display: block; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat.is-leave b { color: var(--leave); }
+  .stat.is-attend b { color: var(--accent); }
+  .detail { margin-top: 12px; display: none; }
+  .detail.open { display: block; }
+  .detail h3 { font-size: 14px; margin: 12px 0 6px; color: var(--muted); font-weight: 600; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+    padding: 5px 12px; font-size: 14px; border: 1px solid var(--border); background: var(--surface-2);
+  }
+  .chip.attend { background: var(--ok-bg); border-color: transparent; }
+  .chip.leave { background: var(--leave-bg); border-color: transparent; }
+  .chip .x { border: 0; background: none; color: var(--muted); padding: 0 0 0 2px; font-size: 15px; line-height: 1; }
+  .tag { font-size: 12px; color: var(--muted); }
+
+  /* 功能三：可約的人 */
+  .people { list-style: none; margin: 12px 0 0; padding: 0; }
+  .people li {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 0; border-top: 1px solid var(--border);
+  }
+  .people li:first-child { border-top: 0; }
+  .name-btn { border: 0; background: none; color: var(--text); font-weight: 600; padding: 0; text-align: left; }
+  .name-btn:hover { text-decoration: underline; }
+  .status { font-size: 12px; border-radius: 999px; padding: 2px 8px; margin-left: 6px; font-weight: 600; }
+  .status.yes { background: var(--ok-bg); color: var(--accent); }
+  .status.no { background: var(--danger-bg); color: var(--danger); }
+  .rejected .name-btn { color: var(--muted); text-decoration: line-through; }
+
+  /* 對話框 */
+  dialog {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text);
+    padding: 20px; width: min(360px, calc(100vw - 32px));
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+  dialog h2 { margin-bottom: 12px; }
+  dialog label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
+  dialog select, dialog input { width: 100%; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px;
+    font-size: 14px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+    max-width: calc(100vw - 32px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  details summary { cursor: pointer; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏸 羽球點名板</h1>
+  <p class="muted" style="margin:0">誰請假、誰出席、還能約誰，一頁看完。</p>
+
+  <!-- 日期 -->
+  <div class="card row between">
+    <label class="row" for="playDate"><strong>打球日</strong></label>
+    <input type="date" id="playDate">
+  </div>
+
+  <!-- 功能一 + 功能二 -->
+  <div class="card">
+    <div class="row between">
+      <h2>出席狀況</h2>
+      <button class="btn leave" id="leaveBtn">我要請假</button>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <button class="stat is-attend" data-toggle="detail">出席<b id="attendCount">0</b></button>
+      <button class="stat is-leave" data-toggle="detail">請假<b id="leaveCount">0</b></button>
+    </div>
+    <div class="detail" id="detail">
+      <h3>出席</h3>
+      <div class="chips" id="attendList"></div>
+      <h3>請假</h3>
+      <div class="chips" id="leaveList"></div>
+    </div>
+    <p class="muted" style="margin:10px 0 0">點上面的數字可以看名單</p>
+  </div>
+
+  <!-- 功能三 + 功能四 -->
+  <div class="card">
+    <div class="row between">
+      <h2>可以約的人</h2>
+      <span class="muted">點名字詢問是否候補</span>
+    </div>
+    <ul class="people" id="people"></ul>
+    <form class="row" id="addPersonForm" style="margin-top:12px">
+      <input type="text" id="newPerson" placeholder="新增可約的人" style="flex:1">
+      <button class="btn small" type="submit">新增</button>
+    </form>
+  </div>
+
+  <!-- 固定成員設定 -->
+  <div class="card">
+    <details>
+      <summary>固定成員（預設都出席）</summary>
+      <div class="chips" id="memberList" style="margin-top:12px"></div>
+      <form class="row" id="addMemberForm" style="margin-top:12px">
+        <input type="text" id="newMember" placeholder="新增成員" style="flex:1">
+        <button class="btn small" type="submit">新增</button>
+      </form>
+    </details>
+  </div>
+</div>
+
+<!-- 請假對話框 -->
+<dialog id="leaveDialog">
+  <form method="dialog" id="leaveForm">
+    <h2>請假</h2>
+    <label for="leaveName">誰要請假</label>
+    <select id="leaveName" required></select>
+    <label for="leaveDate">日期</label>
+    <input type="date" id="leaveDate" required>
+    <div class="actions">
+      <button class="btn ghost" value="cancel" formnovalidate>取消</button>
+      <button class="btn leave" value="ok">確定請假</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 候補對話框 -->
+<dialog id="inviteDialog">
+  <h2 id="inviteTitle"></h2>
+  <p class="muted" style="margin:0">選「是」會加入出席名單，選「否」會標記已拒絕。</p>
+  <div class="actions">
+    <button class="btn ghost" id="inviteCancel">取消</button>
+    <button class="btn" id="inviteNo">否</button>
+    <button class="btn primary" id="inviteYes">是</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'badminton-board-v1';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function today() {
+    var d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  }
+
+  // 資料結構：
+  // members: 固定成員（預設出席）
+  // pool: 可以約的人
+  // leaves: { "2026-09-24": ["小明"] }
+  // invites: { "2026-09-24": { "阿華": "yes" | "no" } }
+  var state = load() || {
+    members: ['小明', '小美', '阿傑', '佳佳'],
+    pool: ['阿華', '小王', 'Kevin'],
+    leaves: {},
+    invites: {}
+  };
+  var date = today();
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* 忽略 */ }
+  }
+
+  function leavesOn(d) { return state.leaves[d] || []; }
+  function invitesOn(d) { return state.invites[d] || {}; }
+
+  function chip(text, cls, onRemove, tag) {
+    var el = document.createElement('span');
+    el.className = 'chip ' + (cls || '');
+    el.textContent = text;
+    if (tag) {
+      var t = document.createElement('span');
+      t.className = 'tag';
+      t.textContent = tag;
+      el.appendChild(t);
+    }
+    if (onRemove) {
+      var x = document.createElement('button');
+      x.className = 'x';
+      x.type = 'button';
+      x.setAttribute('aria-label', '移除 ' + text);
+      x.textContent = '×';
+      x.onclick = onRemove;
+      el.appendChild(x);
+    }
+    return el;
+  }
+
+  function render() {
+    var leaves = leavesOn(date);
+    var invites = invitesOn(date);
+    var attend = state.members.filter(function (m) { return leaves.indexOf(m) === -1; });
+    var extras = Object.keys(invites).filter(function (n) { return invites[n] === 'yes'; });
+
+    // 功能一
+    $('attendCount').textContent = attend.length + extras.length;
+    $('leaveCount').textContent = leaves.length;
+
+    var al = $('attendList'); al.innerHTML = '';
+    attend.forEach(function (n) { al.appendChild(chip(n, 'attend')); });
+    extras.forEach(function (n) {
+      al.appendChild(chip(n, 'attend', function () { delete invites[n]; save(); render(); }, '候補'));
+    });
+    if (!al.children.length) al.innerHTML = '<span class="muted">沒有人</span>';
+
+    var ll = $('leaveList'); ll.innerHTML = '';
+    leaves.forEach(function (n) {
+      ll.appendChild(chip(n, 'leave', function () {
+        state.leaves[date] = leaves.filter(function (x) { return x !== n; });
+        save(); render();
+      }));
+    });
+    if (!ll.children.length) ll.innerHTML = '<span class="muted">沒有人請假</span>';
+
+    // 功能三 + 四
+    var ul = $('people'); ul.innerHTML = '';
+    state.pool.forEach(function (n) {
+      var li = document.createElement('li');
+      if (invites[n] === 'no') li.className = 'rejected';
+
+      var left = document.createElement('div');
+      var nameBtn = document.createElement('button');
+      nameBtn.className = 'name-btn';
+      nameBtn.textContent = n;
+      nameBtn.onclick = function () { openInvite(n); };
+      left.appendChild(nameBtn);
+      if (invites[n]) {
+        var s = document.createElement('span');
+        s.className = 'status ' + invites[n];
+        s.textContent = invites[n] === 'yes' ? '已加入' : '已拒絕';
+        left.appendChild(s);
+      }
+
+      var right = document.createElement('div');
+      right.className = 'row';
+      var copy = document.createElement('button');
+      copy.className = 'btn small';
+      copy.textContent = '複製邀請';
+      copy.onclick = function () { copyText(n + '加打球嗎？'); };
+      var del = document.createElement('button');
+      del.className = 'btn small ghost';
+      del.setAttribute('aria-label', '刪除 ' + n);
+      del.textContent = '×';
+      del.onclick = function () {
+        if (!confirm('要從名單移除「' + n + '」嗎？')) return;
+        state.pool = state.pool.filter(function (x) { return x !== n; });
+        save(); render();
+      };
+      right.appendChild(copy);
+      right.appendChild(del);
+
+      li.appendChild(left);
+      li.appendChild(right);
+      ul.appendChild(li);
+    });
+    if (!state.pool.length) ul.innerHTML = '<li class="muted">還沒有人，下面新增吧</li>';
+
+    // 固定成員
+    var ml = $('memberList'); ml.innerHTML = '';
+    state.members.forEach(function (n) {
+      ml.appendChild(chip(n, '', function () {
+        if (!confirm('要移除成員「' + n + '」嗎？')) return;
+        state.members = state.members.filter(function (x) { return x !== n; });
+        save(); render();
+      }));
+    });
+  }
+
+  // 日期
+  $('playDate').value = date;
+  $('playDate').onchange = function () { date = this.value || today(); render(); };
+
+  // 功能一：點數字展開名單
+  document.querySelectorAll('[data-toggle="detail"]').forEach(function (b) {
+    b.onclick = function () { $('detail').classList.toggle('open'); };
+  });
+
+  // 功能二：請假
+  $('leaveBtn').onclick = function () {
+    var sel = $('leaveName'); sel.innerHTML = '';
+    state.members.forEach(function (n) {
+      var o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o);
+    });
+    $('leaveDate').value = date;
+    $('leaveDialog').showModal();
+  };
+  $('leaveDialog').addEventListener('close', function () {
+    if (this.returnValue !== 'ok') return;
+    var n = $('leaveName').value, d = $('leaveDate').value;
+    if (!n || !d) return;
+    var list = state.leaves[d] = leavesOn(d);
+    if (list.indexOf(n) === -1) list.push(n);
+    save(); render();
+    toast(n + ' 已請假（' + d + '）');
+  });
+
+  // 功能三：候補與否
+  var inviting = null;
+  function openInvite(n) {
+    inviting = n;
+    $('inviteTitle').textContent = n + ' 要候補嗎？';
+    $('inviteDialog').showModal();
+  }
+  function answer(v) {
+    var inv = state.invites[date] = invitesOn(date);
+    inv[inviting] = v;
+    save(); render();
+    $('inviteDialog').close();
+  }
+  $('inviteYes').onclick = function () { answer('yes'); };
+  $('inviteNo').onclick = function () { answer('no'); };
+  $('inviteCancel').onclick = function () { $('inviteDialog').close(); };
+
+  // 功能四：複製到剪貼簿
+  function copyText(text) {
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) { /* 忽略 */ }
+      document.body.removeChild(ta);
+      toast('已複製：' + text);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast('已複製：' + text); }, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  // 新增名字
+  function addName(inputId, listKey) {
+    return function (e) {
+      e.preventDefault();
+      var v = $(inputId).value.trim();
+      if (v && state[listKey].indexOf(v) === -1) { state[listKey].push(v); save(); render(); }
+      $(inputId).value = '';
+    };
+  }
+  $('addPersonForm').onsubmit = addName('newPerson', 'pool');
+  $('addMemberForm').onsubmit = addName('newMember', 'members');
+
+  render();
+})();
+</script>
+</body>
+</html>
