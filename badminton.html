@@ -119,7 +119,15 @@
     background: var(--surface); color: var(--accent); display: grid; place-items: center; padding: 0;
   }
   .icon-btn svg { width: 22px; height: 22px; }
-  #calDialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+  #calDialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding-top: 0; }
+  .cal-head {
+    position: sticky; top: 0; z-index: 1; background: var(--surface);
+    padding: 14px 0 10px; border-bottom: 1px solid var(--border);
+  }
+  .close-x {
+    position: absolute; top: 10px; right: -8px; width: 40px; height: 40px; border-radius: 50%;
+    border: 0; background: none; color: var(--muted); font-size: 24px; line-height: 1;
+  }
   .month { margin-top: 16px; }
   .month h3 { font-size: 14px; margin: 0 0 6px; }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
@@ -292,12 +300,15 @@
 
 <!-- 本季行事曆 -->
 <dialog id="calDialog">
-  <div class="row between">
-    <button class="btn small ghost" id="calPrev" aria-label="上一季">‹</button>
-    <h2 id="calTitle" style="margin:0"></h2>
-    <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
+  <div class="cal-head">
+    <button class="close-x" id="calX" aria-label="關閉行事曆">✕</button>
+    <div class="row" style="justify-content:center; gap:12px; padding-right:28px">
+      <button class="btn small ghost" id="calPrev" aria-label="上一季">‹</button>
+      <h2 id="calTitle" style="margin:0"></h2>
+      <button class="btn small ghost" id="calNext" aria-label="下一季">›</button>
+    </div>
+    <p class="muted" id="calRange" style="margin:6px 0 0; text-align:center"></p>
   </div>
-  <p class="muted" id="calRange" style="margin:6px 0 0; text-align:center"></p>
   <p class="muted" style="margin:8px 0 0">綠色是打球日（數字是出席人數），紅色是全員請假；點日期可切換到那天。</p>
   <div id="calBody"></div>
   <div class="actions"><button class="btn" id="calClose">關閉</button></div>
@@ -661,7 +672,15 @@
   };
   $('calPrev').onclick = function () { shiftQ(-1); };
   $('calNext').onclick = function () { shiftQ(1); };
-  $('calClose').onclick = function () { $('calDialog').close(); };
+  $('calClose').onclick = $('calX').onclick = function () { $('calDialog').close(); };
+  // 點行事曆外面的灰色區域也能關閉（所有對話框通用）
+  document.querySelectorAll('dialog').forEach(function (dlg) {
+    dlg.addEventListener('click', function (e) {
+      if (e.target !== dlg) return;
+      var r = dlg.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
+    });
+  });
 
   // 功能一：點數字展開名單
   document.querySelectorAll('[data-toggle="detail"]').forEach(function (b) {
